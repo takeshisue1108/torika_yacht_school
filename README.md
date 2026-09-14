@@ -1,0 +1,2 @@
+# torika_yacht_school
+トリッカルのヨットをうまくなるためのもの
