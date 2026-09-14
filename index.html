@@ -784,7 +784,7 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
 
 <div class="fanfare" id="fanfare" aria-hidden="true"></div>
 <div class="toast" id="toast" role="status"></div>
-<script>window.BUILD_INFO={"builtAt": "2026-09-14T23:37:57+0900", "strategySha256": "5548da3008ee7461", "corpusLines": 11322};</script>
+<script>window.BUILD_INFO={"builtAt": "2026-09-14T23:39:03+0900", "strategySha256": "5548da3008ee7461", "corpusLines": 11322};</script>
 <script>
 /* Trick Dice (JP Season 1) — rules, exact expected-score DP, HYBRID_REPORT_V1 policy, grading, reason codes.
    Works in Node (module.exports) and in the browser (window.TD). No dependencies. */
@@ -1350,7 +1350,7 @@ function reasonLines(reasons,stem,isKeep,facts){
   const compose=isKeep?composeKeep:composeCat;
   const main=compose(reasons[0],facts,stem);
   let reason=main.reason;
-  if(reasons[1]){const sub=compose(reasons[1],facts,stem);const tail=sub.reason.replace(/^.*?のは、/,'');reason+=`　${tail.replace(/からにゃ$/,'のも大事にゃ').replace(/ためにゃ$/,'のも大事にゃ')}`;}
+  if(reasons[1]){const sub=compose(reasons[1],facts,stem);let tail=sub.reason.replace(/^.*?のは、/,'').replace(/（[^（）]*）$/,'');tail=tail.replace(/だからにゃ$/,'なのも大事にゃ').replace(/からにゃ$/,'のも大事にゃ').replace(/ためにゃ$/,'のも大事にゃ').replace(/にゃ$/,'のも大事にゃ');reason+=`　${tail}`;}
   return{chip:main.chip,reason};
 }
 
