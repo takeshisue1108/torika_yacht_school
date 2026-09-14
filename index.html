@@ -683,7 +683,7 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
 
 <div class="fanfare" id="fanfare" aria-hidden="true"></div>
 <div class="toast" id="toast" role="status"></div>
-<script>window.BUILD_INFO={"builtAt": "2026-09-14T23:21:05+0900", "strategySha256": "b67c597ecfa84728", "corpusLines": 11322};</script>
+<script>window.BUILD_INFO={"builtAt": "2026-09-14T23:21:59+0900", "strategySha256": "b67c597ecfa84728", "corpusLines": 11322};</script>
 <script>
 /* Trick Dice (JP Season 1) — rules, exact expected-score DP, HYBRID_REPORT_V1 policy, grading, reason codes.
    Works in Node (module.exports) and in the browser (window.TD). No dependencies. */
@@ -1062,7 +1062,7 @@ function renderCombined(el){
     const reg=(canSelect&&G.selCat===c)?`<button class="regbtn" id="btnRegister" aria-label="${CAT_SPEECH[c]} に記録する">記録</button>`:'';
     return`<tr data-row="${c}"${canSelect&&G.selCat===c?' class="selrow"':''}><td class="n" title="${CAT_DESC[c]}"><span class="nwrap">${ico}${reg}</span></td>${cell(u,'user',c)}${cell(k,'kommy',c)}</tr>`;};
   const Bu=TD.upperMargin(u.categoryScores),Bk=TD.upperMargin(k.categoryScores);
-  let h=`<table><thead><tr><th class="n">役</th><th class="${active==='user'?'act':''}">あなた</th><th class="${active==='kommy'?'act':''}">コミー</th></tr></thead><tbody>`;
+  let h=`<table><colgroup><col style="width:50%"><col style="width:25%"><col style="width:25%"></colgroup><thead><tr><th class="n">役</th><th class="${active==='user'?'act':''}">あなた</th><th class="${active==='kommy'?'act':''}">コミー</th></tr></thead><tbody>`;
   h+=`<tr class="sec"><td colspan="3">上段（2〜6）</td></tr>`;
   for(let c=0;c<5;c++)h+=row(c);
   h+=`<tr class="sub"><td class="n">上段合計 <span class="mini">/55</span></td><td class="v">${u.upperRaw}</td><td class="v">${k.upperRaw}</td></tr>`;
