@@ -90,11 +90,12 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
 .scorecard th.n{text-align:left}
 .scorecard th.act{color:var(--red);background:#fff3f1}
 .scorecard td{padding:1px 4px;border-bottom:1px solid var(--line);font-size:.9rem;height:30px}
-.scorecard td.n{font-weight:700;white-space:nowrap;text-align:left;width:46%;overflow:hidden;text-overflow:ellipsis;font-size:.86rem}
+.scorecard td.n{font-weight:700;white-space:nowrap;text-align:left;width:46%;font-size:.86rem;padding-right:2px}
+.scorecard td.n .nwrap{display:flex;align-items:center;justify-content:space-between;gap:4px;min-width:0}
 .scorecard tr.selrow td{background:#fff8e6}
-.scorecard .regbtn{min-width:40px;min-height:26px;padding:0 6px;border-radius:8px;background:var(--brown);color:#fff;border-color:var(--brown);font-weight:800;font-size:.78rem;margin-left:6px;vertical-align:middle}
+.scorecard .regbtn{flex:0 0 auto;min-width:40px;min-height:26px;padding:0 6px;border-radius:8px;background:var(--brown);color:#fff;border-color:var(--brown);font-weight:800;font-size:.78rem;margin-left:auto}
 .scorecard td.n .ico{display:inline-block;min-width:20px;height:20px;line-height:20px;text-align:center;border-radius:6px;background:var(--red);color:#fff;font-size:.75rem;font-weight:800;margin-right:4px;padding:0 4px}
-.scorecard td.n .ico.l{background:#b58a8a;font-size:.72rem;padding:0 6px}
+.scorecard td.n .ico.l{background:#b58a8a;font-size:.72rem;padding:0 6px;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:0 1 auto}
 .scorecard td.v{text-align:center;padding:1px 2px}
 .scorecard td.v.empty{color:#c9b3b3}
 .scorecard td.v .cand{display:inline-block;width:100%;min-height:28px;min-width:0;padding:0 4px;border-radius:8px;border:1px dashed #cfb5b5;background:#fff;color:#a08080;font-weight:600;text-align:center;font-size:.9rem;line-height:1.2}
@@ -682,7 +683,7 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
 
 <div class="fanfare" id="fanfare" aria-hidden="true"></div>
 <div class="toast" id="toast" role="status"></div>
-<script>window.BUILD_INFO={"builtAt": "2026-09-14T23:18:18+0900", "strategySha256": "b67c597ecfa84728", "corpusLines": 11322};</script>
+<script>window.BUILD_INFO={"builtAt": "2026-09-14T23:19:56+0900", "strategySha256": "b67c597ecfa84728", "corpusLines": 11322};</script>
 <script>
 /* Trick Dice (JP Season 1) — rules, exact expected-score DP, HYBRID_REPORT_V1 policy, grading, reason codes.
    Works in Node (module.exports) and in the browser (window.TD). No dependencies. */
@@ -1059,7 +1060,7 @@ function renderCombined(el){
     return`<td class="v empty">—</td>`;};
   const row=c=>{const ico=c<5?`<span class="ico">${CAT_LABEL[c]}</span>`:`<span class="ico l">${CAT_LABEL[c]}</span>`;
     const reg=(canSelect&&G.selCat===c)?`<button class="regbtn" id="btnRegister" aria-label="${CAT_SPEECH[c]} に記録する">記録</button>`:'';
-    return`<tr data-row="${c}"${canSelect&&G.selCat===c?' class="selrow"':''}><td class="n" title="${CAT_DESC[c]}">${ico}${reg}</td>${cell(u,'user',c)}${cell(k,'kommy',c)}</tr>`;};
+    return`<tr data-row="${c}"${canSelect&&G.selCat===c?' class="selrow"':''}><td class="n" title="${CAT_DESC[c]}"><span class="nwrap">${ico}${reg}</span></td>${cell(u,'user',c)}${cell(k,'kommy',c)}</tr>`;};
   const Bu=TD.upperMargin(u.categoryScores),Bk=TD.upperMargin(k.categoryScores);
   let h=`<table><thead><tr><th class="n">役</th><th class="${active==='user'?'act':''}">あなた</th><th class="${active==='kommy'?'act':''}">コミー</th></tr></thead><tbody>`;
   h+=`<tr class="sec"><td colspan="3">上段（2〜6）</td></tr>`;
