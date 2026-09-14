@@ -152,6 +152,14 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
 @keyframes talk{from{transform:scaleY(.55) translateY(-4px)}to{transform:scaleY(1.05)}}
 .bubble{width:100%;background:#fff;border:2px solid var(--pink2);border-radius:14px;padding:8px 10px;position:relative;font-size:.95rem}
 .bubble.ghost{background:var(--panel);border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden}
+.ghost-face svg{width:100%;height:100%}
+/* チャットの背後で薄く浮かぶコミー */
+.chat-bg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;overflow:hidden}
+.chat-bg .face{width:min(78vw,560px);opacity:.3;animation:bob 4.2s ease-in-out infinite}
+.chat-bg .face svg{width:100%;height:auto}
+.modal.chat{background:rgba(255,255,255,.9)}
+.chat .clog{background:rgba(251,246,239,.72)}
+.chat .cinput,.chat .cnt,.chat .topics{background:rgba(255,255,255,.85)}
 .bubble .who{font-size:.75rem;color:var(--muted);font-weight:700}
 .bubble .chip{display:inline-block;font-size:.75rem;font-weight:700;padding:1px 8px;border-radius:999px;background:var(--pink);color:var(--brown);margin:2px 0}
 .bubble .l1{font-weight:700}
@@ -273,7 +281,7 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
 @media (prefers-reduced-motion:reduce){
   .kommy-svg .p-eyes,.kommy-svg .p-mouth,.kommy-svg .p-brows,.kommy-svg .p-ahoge,.kommy-svg .p-cheeks{transition:none}
   .face[data-expr="happy"] .p-ahoge,.face[data-expr="talk"] .p-mouth{animation:none}
-  .die.rolling,.die.free,.kommy-row .portrait .face,.face-title,.topics.shake{animation:none}
+  .die.rolling,.die.free,.kommy-row .portrait .face,.face-title,.topics.shake,.chat-bg .face{animation:none}
   .fanfare.show{animation:none;opacity:1;transform:translate(-50%,-50%);transition:opacity .2s}
   .die,.scorecard tr.flash td{transition:none;animation:none}
   .chat .dots span{animation:none;opacity:.7}
@@ -667,6 +675,99 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
 
 <!-- Chat -->
 <div class="overlay hidden" id="ovChat" role="dialog" aria-modal="true" aria-labelledby="chatTitle">
+  <div class="chat-bg" aria-hidden="true"><div class="face" data-expr="normal"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 390" class="kommy-svg" role="img" aria-label="コミー" focusable="false">
+<defs>
+  <linearGradient id="bh-grad-4" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0.55" stop-color="#f4f3f4"/><stop offset="1" stop-color="#f7e6e7"/>
+  </linearGradient>
+</defs>
+<g class="p-back_hair" fill="url(#bh-grad-4)" stroke="#5a2a2c" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+  <path d="M 60,205 C 48,215 44,228 44,245 C 44,300 48,340 56,390 L 84,390 C 82,350 78,300 74,255 L 78,225 Z"/>
+  <path d="M 330,110 C 380,120 398,160 404,200 C 412,240 410,270 418,288 C 426,292 433,297 432,303 C 425,303 418,301 412,305 C 411,335 410,362 410,390 L 348,390 C 350,360 350,330 345,305 C 330,318 318,322 310,322 C 322,308 330,292 334,270 C 340,240 340,200 336,160 C 334,140 332,125 330,110 Z"/>
+  <path d="M 380,230 C 384,280 384,340 380,390" fill="none" stroke="#cdb9ba" stroke-width="2"/>
+  <path d="M 60,250 C 58,300 60,350 63,390" fill="none" stroke="#cdb9ba" stroke-width="2"/>
+</g>
+<defs>
+  <linearGradient id="neck-grad-4" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#e2c1c0"/><stop offset="1" stop-color="#f6dcdb"/>
+  </linearGradient>
+</defs>
+<g class="p-neck">
+  <path d="M 244,320 L 244,366 C 245,378 248,386 250,392 L 306,392 C 308,376 310,350 310,320 Z" fill="url(#neck-grad-4)" stroke="#5a2a2c" stroke-width="4" stroke-linejoin="round"/>
+</g>
+<g class="p-ears" stroke="#5a2a2c" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+  <g class="p-ear_left">
+    <path d="M 67,143 C 78,105 92,68 110,35 C 128,50 148,66 168,80 C 130,92 95,112 67,143 Z" fill="#f4f3f4"/>
+    <path d="M 110,35 C 122,46 132,53 140,56 C 124,66 112,80 104,94 C 94,110 84,124 74,138 L 67,143 C 78,105 92,68 110,35 Z" fill="#f7a1a4" stroke="none"/>
+    <path d="M 107,44 C 94,72 84,100 73,132" fill="none" stroke="#e6969a" stroke-width="4"/>
+    <path d="M 118,66 C 118,80 128,90 146,92" fill="none" stroke="#5a2a2c" stroke-width="2.5" opacity="0.7"/>
+  </g>
+  <g class="p-ear_right" transform="translate(465 0) scale(-1 1)">
+    <path d="M 67,143 C 78,105 92,68 110,35 C 128,50 148,66 168,80 C 130,92 95,112 67,143 Z" fill="#f4f3f4"/>
+    <path d="M 110,35 C 122,46 132,53 140,56 C 124,66 112,80 104,94 C 94,110 84,124 74,138 L 67,143 C 78,105 92,68 110,35 Z" fill="#f7a1a4" stroke="none"/>
+    <path d="M 107,44 C 94,72 84,100 73,132" fill="none" stroke="#e6969a" stroke-width="4"/>
+    <path d="M 118,66 C 118,80 128,90 146,92" fill="none" stroke="#5a2a2c" stroke-width="2.5" opacity="0.7"/>
+  </g>
+</g>
+<g class="p-face">
+  <path d="M 86,150 C 76,180 72,200 74,226 C 66,250 58,272 60,298 C 61,328 82,338 112,338 L 282,338 C 310,338 326,330 326,300 C 330,275 331,250 330,226 C 332,200 325,175 318,150 Z" fill="#fdf0ee" stroke="#5a2a2c" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M 66,300 C 68,328 86,335 112,335 L 282,335 C 308,335 322,325 324,300 C 300,320 250,325 195,325 C 145,325 96,320 66,300 Z" fill="#f3dcdb" stroke="none"/>
+</g>
+<g class="p-cheeks">
+  <ellipse cx="97" cy="288" rx="40" ry="33" fill="#feb5b6"/>
+  <ellipse cx="278" cy="285" rx="36" ry="32" fill="#feb5b6"/>
+  <g stroke="#f4888c" stroke-width="3" stroke-linecap="round">
+    <path d="M 78,278 L 84,294 M 90,274 L 96,290 M 102,272 L 108,288"/>
+    <path d="M 283,272 L 289,288 M 295,270 L 301,286 M 307,272 L 313,288"/>
+  </g>
+</g>
+<g class="p-eyes" fill="#ffffff" stroke="#5a2a2c" stroke-width="4.5">
+  <ellipse cx="137" cy="258" rx="34" ry="20"/>
+  <ellipse cx="257" cy="256" rx="36" ry="21"/>
+</g>
+<g class="p-mouth" stroke="#5a2a2c" stroke-linecap="round" stroke-linejoin="round">
+  <ellipse cx="200" cy="284" rx="11" ry="6" fill="#ee9ea2" stroke="none"/>
+  <path d="M 189,284 C 186,300 190,314 200,315 C 210,314 214,300 211,284 Z" fill="#ffafb0" stroke-width="3"/>
+  <path d="M 200,291 L 200,308" fill="none" stroke="#ef878c" stroke-width="2"/>
+  <path d="M 183,277 C 188,286 195,287 200,282 C 205,287 212,286 217,277" fill="none" stroke-width="3.5"/>
+</g>
+<defs>
+  <linearGradient id="bangs-grad-4" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0.35" stop-color="#f5f4f5"/><stop offset="0.75" stop-color="#f6ebeb"/><stop offset="1" stop-color="#f2e2e3"/>
+  </linearGradient>
+</defs>
+<g class="p-bangs" stroke="#5a2a2c" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+  <path d="M 15,197 C 17,205 20,213 28,218 C 34,219 40,216 44,213 C 54,220 66,226 76,230 C 90,228 110,228 125,232 C 140,236 155,240 165,236 C 175,222 195,212 215,216 C 228,204 258,204 283,218 C 292,216 298,222 302,232 C 312,226 322,228 330,236 C 334,244 336,248 337,252 C 358,238 380,208 395,160 C 396,150 396,145 395,140 C 380,105 345,78 300,67 C 270,58 230,58 200,63 C 140,70 95,105 67,143 C 60,155 50,172 40,182 C 32,188 22,193 15,197 Z" fill="url(#bangs-grad-4)"/>
+  <path d="M 84,232 C 95,200 130,172 200,162 C 260,158 310,170 330,205 L 330,236 C 322,228 312,226 302,232 C 298,222 292,216 283,218 C 258,204 228,204 215,216 C 195,212 175,222 165,236 C 155,240 140,236 125,232 C 110,228 90,228 76,230 Z" fill="#f4e2e2" stroke="none" opacity="0.8"/>
+  <g fill="none">
+    <path d="M 145,150 C 140,185 148,215 165,236"/>
+    <path d="M 245,177 C 236,190 225,204 215,216"/>
+    <path d="M 245,177 C 258,192 272,206 283,218"/>
+    <path d="M 362,150 C 358,190 352,225 337,252"/>
+  </g>
+</g>
+<g class="p-ahoge" stroke="#5a2a2c" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round">
+  <path d="M 222,62 C 216,44 220,26 232,16 C 240,12 248,20 246,30 C 244,38 236,40 232,36 C 238,44 246,52 248,62 Z" fill="#f5f4f5"/>
+  <path d="M 236,26 C 230,34 230,46 238,60" fill="none"/>
+</g>
+<g class="p-brows" fill="none" stroke="#5a2a2c" stroke-linecap="round">
+  <path d="M 96,232 C 110,224 130,220 152,222" stroke-width="6"/>
+  <path d="M 242,216 C 265,218 290,221 316,228 L 331,234" stroke-width="6"/>
+  <path d="M 108,221 C 120,215 134,213 146,214" stroke-width="2.5"/>
+  <path d="M 258,206 C 275,204 295,206 308,211" stroke-width="2.5"/>
+</g>
+<g class="p-highlights" fill="#ffffff" stroke="none">
+  <ellipse cx="248" cy="112" rx="110" ry="38" opacity="0.55"/>
+  <ellipse cx="125" cy="130" rx="19" ry="9" transform="rotate(-28 125 130)"/>
+  <circle cx="157" cy="106" r="5"/>
+  <circle cx="182" cy="119" r="6"/>
+  <ellipse cx="352" cy="166" rx="13" ry="8" transform="rotate(35 352 166)"/>
+  <circle cx="374" cy="180" r="4"/>
+</g>
+<g class="p-curl" fill="none" stroke="#5a2a2c" stroke-width="2.5" stroke-linecap="round">
+  <path d="M 410,214 C 416,224 428,226 433,217 C 436,209 428,204 423,209 C 419,215 426,221 431,216"/>
+</g>
+</svg></div></div>
   <div class="modal chat">
     <div class="chead"><h2 id="chatTitle">コミーとおしゃべり</h2><button class="btn-small" id="btnChatStop" disabled>停止</button><button class="btn-small" id="btnChatClose">閉じる</button></div>
     <div class="clog" id="chatLog" aria-live="polite"></div>
@@ -683,7 +784,7 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
 
 <div class="fanfare" id="fanfare" aria-hidden="true"></div>
 <div class="toast" id="toast" role="status"></div>
-<script>window.BUILD_INFO={"builtAt": "2026-09-14T23:21:59+0900", "strategySha256": "b67c597ecfa84728", "corpusLines": 11322};</script>
+<script>window.BUILD_INFO={"builtAt": "2026-09-14T23:24:33+0900", "strategySha256": "b67c597ecfa84728", "corpusLines": 11322};</script>
 <script>
 /* Trick Dice (JP Season 1) — rules, exact expected-score DP, HYBRID_REPORT_V1 policy, grading, reason codes.
    Works in Node (module.exports) and in the browser (window.TD). No dependencies. */
@@ -1344,15 +1445,29 @@ $('btnRestart').addEventListener('click',()=>openModal('ovConfirm'));
 $('btnConfirmYes').addEventListener('click',()=>{closeModal('ovConfirm');newMatch(null);});
 function openChatFx(opener){
   if(G.phase==='loading')return;
-  const b=$('bubbleSp');const r=b.getBoundingClientRect();
-  if(REDUCED||!b.animate||r.width===0){openChat(opener);return;}
+  const b=$('bubbleSp');const face=$('portraitSp').querySelector('.face');
+  const br=b.getBoundingClientRect(),fr=face.getBoundingClientRect();
+  if(REDUCED||!b.animate||br.width===0||fr.width===0){openChat(opener);return;}
   const w=Math.min(440,innerWidth-24),hgt=Math.min(640,innerHeight-24);const L=(innerWidth-w)/2,T=(innerHeight-hgt)/2;
-  const ghost=document.createElement('div');ghost.className='bubble ghost';ghost.setAttribute('aria-hidden','true');
-  ghost.innerHTML='<div class="who">コミー</div><div class="l1">コミーとおしゃべり</div>';
-  Object.assign(ghost.style,{position:'fixed',left:r.left+'px',top:r.top+'px',width:r.width+'px',height:r.height+'px',zIndex:49,margin:0,pointerEvents:'none'});
-  document.body.appendChild(ghost);
-  const anim=ghost.animate([{left:r.left+'px',top:r.top+'px',width:r.width+'px',height:r.height+'px'},{left:L+'px',top:T+'px',width:w+'px',height:hgt+'px'}],{duration:340,easing:'cubic-bezier(.2,.8,.2,1)',fill:'forwards'});
-  anim.onfinish=()=>{openChat(opener);setTimeout(()=>ghost.remove(),120);};
+  // 影の枠（解説の吹き出し）と影の顔（立ち絵）を固定位置で複製する
+  const gb=document.createElement('div');gb.className='bubble ghost';gb.setAttribute('aria-hidden','true');
+  gb.innerHTML='<div class="who">コミー</div><div class="l1">コミーとおしゃべり</div>';
+  Object.assign(gb.style,{position:'fixed',left:br.left+'px',top:br.top+'px',width:br.width+'px',height:br.height+'px',zIndex:49,margin:0,pointerEvents:'none'});
+  const gf=document.createElement('div');gf.className='face ghost-face';gf.setAttribute('aria-hidden','true');gf.dataset.expr=face.dataset.expr||'normal';
+  gf.appendChild(face.querySelector('svg').cloneNode(true));
+  Object.assign(gf.style,{position:'fixed',left:fr.left+'px',top:fr.top+'px',width:fr.width+'px',height:fr.height+'px',zIndex:51,margin:0,pointerEvents:'none',transformOrigin:'50% 50%'});
+  document.body.appendChild(gb);document.body.appendChild(gf);
+  const ease='cubic-bezier(.2,.8,.2,1)';
+  // 1) 顔が右へ動いて解説の枠に重なる
+  const dx1=(br.left+10)-fr.left,dy1=(br.top+(br.height-fr.height)/2)-fr.top;
+  const a1=gf.animate([{transform:'translate(0,0) scale(1)'},{transform:`translate(${dx1}px,${dy1}px) scale(1.04)`}],{duration:260,easing:ease,fill:'forwards'});
+  a1.onfinish=()=>{
+    // 2) 枠がモーダルの大きさへ広がり、顔も控えめに一緒に広がって薄くなる
+    gb.animate([{left:br.left+'px',top:br.top+'px',width:br.width+'px',height:br.height+'px'},{left:L+'px',top:T+'px',width:w+'px',height:hgt+'px'}],{duration:380,easing:ease,fill:'forwards'});
+    const cx=L+w/2-(fr.left+fr.width/2),cy=T+hgt*0.42-(fr.top+fr.height/2);
+    const a2=gf.animate([{transform:`translate(${dx1}px,${dy1}px) scale(1.04)`,opacity:1},{transform:`translate(${cx}px,${cy}px) scale(1.9)`,opacity:.3}],{duration:380,easing:ease,fill:'forwards'});
+    a2.onfinish=()=>{openChat(opener);setTimeout(()=>{gb.remove();gf.remove();},140);};
+  };
 }
 $('portraitSp').addEventListener('click',e=>openChatFx(e.currentTarget));
 $('btnChatClose').addEventListener('click',closeChat);$('btnChatStop').addEventListener('click',chatStop);$('btnChatSend').addEventListener('click',chatSend);
