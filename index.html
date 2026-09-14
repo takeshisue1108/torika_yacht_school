@@ -784,7 +784,7 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
 
 <div class="fanfare" id="fanfare" aria-hidden="true"></div>
 <div class="toast" id="toast" role="status"></div>
-<script>window.BUILD_INFO={"builtAt": "2026-09-14T23:24:33+0900", "strategySha256": "b67c597ecfa84728", "corpusLines": 11322};</script>
+<script>window.BUILD_INFO={"builtAt": "2026-09-14T23:37:57+0900", "strategySha256": "5548da3008ee7461", "corpusLines": 11322};</script>
 <script>
 /* Trick Dice (JP Season 1) — rules, exact expected-score DP, HYBRID_REPORT_V1 policy, grading, reason codes.
    Works in Node (module.exports) and in the browser (window.TD). No dependencies. */
@@ -1002,13 +1002,19 @@ function keptFromHeld(redFaces,green,held){const keep=[0,0,0,0,0,0];for(let i=0;
 function sameAction(a,keep,keepGreen){if(a.keepGreen!==keepGreen)return false;for(let i=0;i<6;i++)if(a.keep[i]!==keep[i])return false;return true;}
 function upperMargin(scores){let b=5;for(let i=0;i<5;i++)if(scores[i]!=null)b+=scores[i]-3*UPPER_FACES[i];return b;}
 
-/* ---------------- reason codes ---------------- */
-// Describe a kept multiset: returns {faces:[...], wild:bool, groups:{face:count}}
+/* ---------------- reason codes & facts ---------------- */
+const CAT_NAMES_JA=['2 の役','3 の役','4 の役','5 の役','6 の役','フルハウス','L ストレート','ヨット'];
+// Describe a kept multiset: {faces:[...], wild, groups:{face:count}, n}
 function keptShape(keep,keepGreen,green){const faces=[];for(let f=1;f<=6;f++)for(let i=0;i<keep[f-1];i++)faces.push(f);const wild=!!(keepGreen&&green===1);if(keepGreen&&green!==1)faces.push(green);faces.sort((a,b)=>a-b);
   const groups={};for(const f of faces)groups[f]=(groups[f]||0)+1;return{faces,wild,groups,n:faces.length+(wild?1:0)};}
+// Faces that complete a straight with one more die given the kept dice (wild counts as any). Empty if not a one-away draw.
+function straightOuts(shape){const K=new Set(shape.faces);const outs=new Set();const w=shape.wild?1:0;const r=5-shape.n;
+  for(const S of[[1,2,3,4,5],[2,3,4,5,6]]){const miss=S.filter(f=>!K.has(f));if(miss.length===w+r&&r===1){for(const f of miss)outs.add(f);if(w)for(const f of miss)outs.add(f);}
+    if(w===1&&r===1&&miss.length===2){/* wild fills one, roll fills the other: any of the missing faces */for(const f of miss)outs.add(f);}}
+  return[...outs].sort((a,b)=>a-b);}
 function isStraightCore(shape){const d=Object.keys(shape.groups).map(Number);if(d.length<3)return false;if(d.some(f=>shape.groups[f]>1))return false;
-  const lo=d[0],hi=d[d.length-1];if(hi-lo>4)return false;return (hi-lo)<=d.length+(shape.wild?1:0)-1+ (shape.wild?1:0);}
-// Reasons for a keep recommendation. ctx: {own, opp, red(counts), green, rerollsLeft, scores(hand scores), rec, userAction?}
+  const lo=d[0],hi=d[d.length-1];if(hi-lo>4)return false;return(hi-lo)<=d.length+(shape.wild?2:0)-1;}
+// Reasons for a keep recommendation. ctx: {own, opp, green, rerollsLeft, scores, rec, remaining, userAction?, evalResult?}
 function keepReasons(ctx){
   const{own,green,rec,scores}=ctx;const shape=keptShape(rec.keep,rec.keepGreen,green);const open=c=>!!(own.mask&(1<<c));
   const all=rec.nKept===5;const reasons=[];
@@ -1024,33 +1030,67 @@ function keepReasons(ctx){
   if(!all){
     if(open(6)&&isStraightCore(shape))reasons.push('STRAIGHT_CORE');
     else if(open(5)&&pairs.length===2&&shape.faces.length===4)reasons.push('FULL_HOUSE_PAIRS');
-    else if(faces.length===1&&groups[faces[0]]>=2&&faces[0]>=2&&open(faces[0]-2))reasons.push('UPPER_RECOVERY');
-    else if(faces.length===1&&groups[faces[0]]>=2&&open(5))reasons.push('FULL_HOUSE_PAIRS');
-    else if(faces.length===1&&shape.wild&&open(faces[0]-2))reasons.push('UPPER_RECOVERY');
-    else if(faces.length===1&&groups[faces[0]]===1&&faces[0]>=4&&open(faces[0]-2))reasons.push('UPPER_RECOVERY');
+    else if(faces.length===1){const f=faces[0];const cnt=groups[f]+(shape.wild?1:0);
+      if(f>=4&&open(f-2))reasons.push('UPPER_RECOVERY');
+      else if(f>=2&&f<=3&&open(f-2))reasons.push('SACRIFICE_LOW');
+      else if(cnt>=2&&(open(5)||open(7)))reasons.push('FULL_HOUSE_PAIRS');}
     else if(faces.length===0&&shape.wild)reasons.push('KEEP_WILD');
   }
   if(wildKept&&!reasons.includes('KEEP_WILD'))reasons.push('KEEP_WILD');
   if(reasons.length===0)reasons.push(all?'MADE_HAND':'FUTURE_VALUE');
   return reasons.slice(0,2);
 }
+// Facts used to phrase the explanation of a keep recommendation.
+function keepFacts(ctx){
+  const{own,opp,green,rec,scores,remaining}=ctx;const shape=keptShape(rec.keep,rec.keepGreen,green);const open=c=>!!(own.mask&(1<<c));
+  const faces=Object.keys(shape.groups).map(Number);const madeLower=(scores[7]>0&&open(7))?7:(scores[6]>0&&open(6))?6:(scores[5]>0&&open(5))?5:-1;
+  let gain=null;if(ctx.evalResult){const vals=ctx.evalResult.actions.map(a=>a.value).sort((a,b)=>b-a);if(vals.length>1)gain=vals[0]-vals[1];}
+  return{shape,keepGreen:!!rec.keepGreen,faces,pairs:faces.filter(f=>shape.groups[f]>=2),face:faces.length===1?faces[0]:null,count:faces.length===1?shape.groups[faces[0]]+(shape.wild?1:0):0,
+    madeLower,madePoints:madeLower>=0?scores[madeLower]:0,outs:straightOuts(shape),B:upperMargin(ctx.scoresCard||[]),diff:opp.total-own.total,oppRemaining:popcount(opp.mask),
+    gain,objective:ctx.evalResult?ctx.evalResult.objective:'ev',upperRaw:own.upperRaw,remaining};
+}
 // Reasons for a category recommendation. ctx: {own, opp, evalResult, rec, scores, remaining, userCat?}
 function categoryReasons(ctx){
-  const{own,rec,scores,remaining,evalResult}=ctx;const c=rec.cat;const reasons=[];
+  const{own,rec,remaining,evalResult}=ctx;const c=rec.cat;const reasons=[];
   const upperRaw=own.upperRaw;const bonusDone=upperRaw>=55;
-  if(remaining===2&&evalResult.objective==='equity'){reasons.push(evalResult.diff<=0?'LEAD_STABILITY':'TRAIL_UPSIDE');}
-  if(c===7&&rec.points===70)reasons.push('BONUS_YACHT');
-  else if(c>=5&&rec.points>0)reasons.push('MADE_HAND');
-  else if(rec.points===0)reasons.push('FORCED_ZERO');
-  else if(c<5&&!bonusDone&&rec.points>=3*UPPER_FACES[c])reasons.push('UPPER_PROTECT');
-  else if(c<=1&&rec.points<3*UPPER_FACES[c])reasons.push('SACRIFICE_LOW');
-  else if(c<5&&rec.points<3*UPPER_FACES[c]&&(own.mask&0xE0))reasons.push('SACRIFICE_LOW');
-  else reasons.push('FUTURE_VALUE');
-  if(reasons.length===1&&reasons[0]!=='FUTURE_VALUE'&&c<5&&!bonusDone&&reasons[0]!=='UPPER_PROTECT'&&rec.points>0)reasons.push('UPPER_PROTECT');
+  const typeReason=()=>{
+    if(c===7&&rec.points===70)return'BONUS_YACHT';
+    if(c>=5&&rec.points>0)return'MADE_HAND';
+    if(rec.points===0)return'FORCED_ZERO';
+    if(c<5&&!bonusDone&&rec.points>=3*UPPER_FACES[c])return'UPPER_PROTECT';
+    if(c<5&&rec.points<3*UPPER_FACES[c])return'SACRIFICE_LOW';
+    return'FUTURE_VALUE';};
+  if(remaining===2&&evalResult.objective==='equity'){
+    const changed=rec.cat!==evalResult.evChoice;
+    const leftover=[0,1,2,3,4,5,6,7].find(k=>(own.mask&(1<<k))&&k!==c);
+    const upside=leftover===6||leftover===7;
+    const winCode=(evalResult.diff<=0&&!upside)||(evalResult.diff>0&&!upside&&!changed)?'LEAD_STABILITY':(upside?'TRAIL_UPSIDE':'LEAD_STABILITY');
+    if(changed){reasons.push(winCode);reasons.push(typeReason());}
+    else{reasons.push(typeReason());reasons.push(winCode);}
+    return reasons.slice(0,2);
+  }
+  reasons.push(typeReason());
+  if(reasons[0]!=='FUTURE_VALUE'&&reasons[0]!=='UPPER_PROTECT'&&c<5&&!bonusDone&&rec.points>0){
+    const after=ctx.scoresCard?upperMargin(Object.assign(ctx.scoresCard.slice(),{[c]:rec.points})):null;
+    if(after==null||after>=-3)reasons.push('UPPER_PROTECT');}
   return reasons.slice(0,2);
 }
+function catFacts(ctx){
+  const{own,opp,rec,evalResult,remaining}=ctx;const c=rec.cat;
+  const cands=evalResult.candidates.slice().sort((a,b)=>b.value-a.value);const second=cands.find(x=>x.cat!==c);
+  const leftover=remaining===2?[0,1,2,3,4,5,6,7].find(k=>(own.mask&(1<<k))&&k!==c):null;
+  const evCand=evalResult.candidates.find(x=>x.cat===evalResult.evChoice);
+  const after=ctx.scoresCard?upperMargin(Object.assign(ctx.scoresCard.slice(),{[c]:rec.points})):null;
+  return{cat:c,points:rec.points,name:CAT_NAMES_JA[c],leftover,leftoverName:leftover!=null?CAT_NAMES_JA[leftover]:null,
+    evCat:evalResult.evChoice,evName:CAT_NAMES_JA[evalResult.evChoice],changed:c!==evalResult.evChoice,objective:evalResult.objective,
+    diff:evalResult.diff!=null?evalResult.diff:opp.total-own.total,
+    gain:second?rec.value-second.value:null,  // EV: points; equity: probability
+    eqGainPP:(evalResult.objective==='equity'&&evCand)?(rec.value-evCand.value)*100:null,
+    meanDelta:(evalResult.objective==='equity'&&evCand)?rec.mean-evCand.mean:null,
+    Bafter:after,bonusDone:own.upperRaw>=55,upperRaw:own.upperRaw,remaining};
+}
 
-const api={N_CAT,ALL,UPPER_FACES,MAX_TOTAL,RULES_ID,STRATEGY_ID,TOL_EV,TOL_EQ,CAT_IDS,scoreHand,scoreFromFaces,buildModel,solve,solveSync,reachableSums,popcount,Strategy,exactMatchEquity,propagate,keptFromHeld,sameAction,upperMargin,keepReasons,categoryReasons,keptShape};
+const api={N_CAT,ALL,UPPER_FACES,MAX_TOTAL,RULES_ID,STRATEGY_ID,TOL_EV,TOL_EQ,CAT_IDS,scoreHand,scoreFromFaces,buildModel,solve,solveSync,reachableSums,popcount,Strategy,exactMatchEquity,propagate,keptFromHeld,sameAction,upperMargin,keepReasons,categoryReasons,keptShape,keepFacts,catFacts,straightOuts,CAT_NAMES_JA};
 if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.TD=api;
 })(typeof window!=='undefined'?window:globalThis);
 
@@ -1245,17 +1285,74 @@ function gradeKeep(held){
   const p=actP(),o=oppP();const{keep,keepGreen}=TD.keptFromHeld(G.turn.redFaces,G.turn.green,held);
   const ev=STRAT.evaluateKeep(stateOf(p),stateOf(o),redCounts(),G.turn.green,rerollsLeft());
   const ua=ev.actions.find(a=>TD.sameAction(a,keep,keepGreen));const rec=ev.recommended;
-  const reasons=TD.keepReasons({own:stateOf(p),opp:stateOf(o),green:G.turn.green,rec,scores:handScores(),remaining:ev.remaining,rerollsLeft:rerollsLeft(),userAction:{keep,keepGreen}});
-  return{correct:!!(ua&&ua.correct),rec,ev,reasons,recHeld:heldFromAction(rec),userValue:ua?ua.value:null};
+  const kctx={own:stateOf(p),opp:stateOf(o),green:G.turn.green,rec,scores:handScores(),remaining:ev.remaining,rerollsLeft:rerollsLeft(),userAction:{keep,keepGreen},evalResult:ev,scoresCard:p.categoryScores};
+  const reasons=TD.keepReasons(kctx);const facts=TD.keepFacts(kctx);
+  return{correct:!!(ua&&ua.correct),rec,ev,reasons,facts,recHeld:heldFromAction(rec),userValue:ua?ua.value:null};
 }
 function gradeCategory(cat){
   const p=actP(),o=oppP();const ev=STRAT.evaluateCategory(stateOf(p),stateOf(o),redCounts(),G.turn.green);
   const c=ev.candidates.find(x=>x.cat===cat);const rec=ev.recommended;
-  const reasons=TD.categoryReasons({own:stateOf(p),opp:stateOf(o),evalResult:ev,rec,scores:handScores(),remaining:ev.remaining,userCat:cat});
-  return{correct:!!(c&&c.correct),rec,ev,reasons,userValue:c?c.value:null};
+  const cctx={own:stateOf(p),opp:stateOf(o),evalResult:ev,rec,scores:handScores(),remaining:ev.remaining,userCat:cat,scoresCard:p.categoryScores};
+  const reasons=TD.categoryReasons(cctx);const facts=TD.catFacts(cctx);
+  return{correct:!!(c&&c.correct),rec,ev,reasons,facts,userValue:c?c.value:null};
 }
 const KEEP_FUTURE={p:'先の役が強くなる形を残すにゃ',r:'その方が後の役の選択肢が強くなるからにゃ'};
-function reasonLines(reasons,stem,isKeep){let main=REASONS[reasons[0]]||REASONS.FUTURE_VALUE;if(isKeep&&reasons[0]==='FUTURE_VALUE')main=KEEP_FUTURE;let r=`${stem}のは、${main.r}`;if(reasons[1]&&REASONS[reasons[1]])r+=`　${REASONS[reasons[1]].r.replace(/からにゃ$/,'のも大事にゃ')}`;return{chip:main.p,reason:r};}
+const fmt1=x=>(Math.round(x*10)/10).toString();
+const jn=n=>/^\d/.test(n)?' '+n:n; // 役名が数字で始まるときだけ前に空白
+// 理由コード＋事実（残した形・残す役・点差・勝率差・期待点差・余裕 B）から、原則（チップ）と理由文を組み立てる
+function composeKeep(code,F,stem){
+  const R=REASONS[code];const sh=F.shape;
+  switch(code){
+    case 'KEEP_WILD':return{chip:R.p,reason:`${stem}のは、${R.r}`};
+    case 'BONUS_YACHT':return{chip:R.p,reason:`${stem}のは、${R.r}`};
+    case 'MADE_HAND':{if(F.madeLower>=0)return{chip:'完成した役は崩さないにゃ',reason:`${stem}のは、${CAT_SPEECH[F.madeLower]}の ${F.madePoints} 点をもう固定で取れる形だからにゃ`};
+      return{chip:'これ以上は振らないにゃ',reason:`${stem}のは、振り直しても期待点が上がらない形だからにゃ`};}
+    case 'STRAIGHT_CORE':{const fs=sh.faces.join('・')+(sh.wild?'・W':'');
+      const r=F.outs.length===1?`残り 1 個が ${F.outs[0]} なら L ストレートが完成するからにゃ`:F.outs.length?`残り 1 個が ${F.outs.join('・')} のどれかなら L ストレートが完成するからにゃ`:`残り 2 個で連番をそろえにいく形だからにゃ`;
+      return{chip:'連番を残してストレートを狙うにゃ',reason:`${fs} を残すのは、${r}`};}
+    case 'FULL_HOUSE_PAIRS':{
+      if(F.pairs.length===2){const[a,b]=F.pairs;const wOk=!F.keepGreen;return{chip:'二対を残してフルハウスを待つにゃ',reason:`${a}・${a}・${b}・${b} を残すのは、残り 1 個が ${a} か ${b}${wOk?' か W':''} なら完成する、成功面の多い形だからにゃ`};}
+      if(F.count>=3)return{chip:'同じ目 3 個を残して大きな役を待つにゃ',reason:`${stem}のは、残りが対になればフルハウス、同じ目ならヨットになるからにゃ`};
+      return{chip:'対を残して役を育てるにゃ',reason:`${stem}のは、同じ目が増えればフルハウスやヨットの形になるからにゃ`};}
+    case 'UPPER_RECOVERY':{const f=F.face;const need=F.B<0?`（いま上段は基準より ${-F.B} 点不足）`:'';
+      return{chip:F.count>=2?`高い目 ${f} をまとめて残すにゃ`:`高い目 ${f} を軸に残すにゃ`,reason:`${stem}のは、${f} を 3 個以上そろえると上段 55 点のボーナスに近づくからにゃ${need}`};}
+    case 'SACRIFICE_LOW':{const f=F.face;return{chip:`${f} を残して上段の穴を埋めるにゃ`,reason:`${stem}のは、低い目でも 0 点にすると上段の余裕 B が ${3*f} 点減るからにゃ`};}
+    case 'TARGET_SCORE':{const d=F.diff;const who=d>0?`相手に ${d} 点負けている`:d<0?`相手に ${-d} 点勝っている`:'同点';const opp=F.oppRemaining>0?'（相手はまだ 1 役残しているにゃ）':'';
+      return{chip:'必要点を超える目だけを狙うにゃ',reason:`${stem}のは、いま${who}ので、最終手番は平均点でなく相手を上回る確率だけが大事だからにゃ${opp}`};}
+    default:{const g=F.gain!=null&&F.objective==='ev'&&F.gain>0.005?`（次善の残し方より期待点で +${fmt1(F.gain)}）`:'';
+      return{chip:KEEP_FUTURE.p,reason:F.shape.n===0?`何も残さない方が後の期待点で最も高いからにゃ${g}`:`${stem}のは、この残し方が後の期待点で最も高いからにゃ${g}`};}
+  }
+}
+function composeCat(code,F,stem){
+  const R=REASONS[code];
+  switch(code){
+    case 'BONUS_YACHT':return{chip:R.p,reason:`${stem}のは、${R.r}`};
+    case 'MADE_HAND':return{chip:'完成した役はその場で取るにゃ',reason:`${stem}のは、${F.points} 点を固定で取れて、後に残すと 0 点になる恐れがあるからにゃ`};
+    case 'FORCED_ZERO':{const g=F.gain!=null&&F.objective==='ev'&&F.gain>0.005?`（他の役に 0 を書くより期待点で +${fmt1(F.gain)}）`:'';
+      return{chip:`0 点を付けるなら${jn(F.name)}にするにゃ`,reason:`${stem}のは、他の役の期待点を残せるからにゃ${g}`};}
+    case 'UPPER_PROTECT':{const b=F.Bafter!=null?`。記録後の余裕 B は ${F.Bafter>=0?'+':''}${F.Bafter}`:'';
+      return{chip:'上段を固めてボーナスを守るにゃ',reason:`${stem}のは、55 点のボーナス圏を守るためにゃ${b}`};}
+    case 'SACRIFICE_LOW':return{chip:`今回は${jn(F.name)}へ逃がすにゃ`,reason:`${stem}のは、大きい固定役を 0 点で潰さないためにゃ（${F.points} 点でも役の枠を 1 つ消化できる）`};
+    case 'LEAD_STABILITY':case 'TRAIL_UPSIDE':{
+      const behind=F.diff>0;const lead=F.diff<0?`${-F.diff} 点リード`:behind?`${F.diff} 点ビハインド`:'同点';
+      const upside=F.leftover===6||F.leftover===7;
+      const why=upside?(behind?`最後に残す${jn(F.leftoverName)}は一発の点が大きく、逆転の上限を持てる`:`最後に残す${jn(F.leftoverName)}は一発の点が大きく、相手の上振れにも備えられる`)
+                      :(behind?`最後に残す${jn(F.leftoverName)}は 0 点になりにくく、確実に点を積める`:`最後に残す${jn(F.leftoverName)}は 0 点になりにくく、逃げ切りやすい`);
+      const chip=upside?(behind?'劣勢なら逆転できる役を最後に残すにゃ':'最後に大きな役を残すにゃ'):(behind?'不利でも手堅い役を最後に残すにゃ':'リード中は逃げ切りやすい役を最後に残すにゃ');
+      let r=`${stem}のは、いま ${lead}で、${why}からにゃ`;
+      if(F.changed&&F.eqGainPP!=null)r+=`（平均点重視なら${jn(F.evName)}だが、勝率は ${fmt1(F.eqGainPP)} ポイント高い）`;
+      return{chip,reason:r};}
+    default:{const g=F.gain!=null&&F.objective==='ev'&&F.gain>0.005?`（次善の役より +${fmt1(F.gain)}）`:'';
+      return{chip:`今は${jn(F.name)}へ記録するにゃ`,reason:`${stem}のは、他の役に書くよりその後の期待点が高いからにゃ${g}`};}
+  }
+}
+function reasonLines(reasons,stem,isKeep,facts){
+  const compose=isKeep?composeKeep:composeCat;
+  const main=compose(reasons[0],facts,stem);
+  let reason=main.reason;
+  if(reasons[1]){const sub=compose(reasons[1],facts,stem);const tail=sub.reason.replace(/^.*?のは、/,'');reason+=`　${tail.replace(/からにゃ$/,'のも大事にゃ').replace(/ためにゃ$/,'のも大事にゃ')}`;}
+  return{chip:main.chip,reason};
+}
 
 /* ---------------- user actions ---------------- */
 function toggleHeld(i){const t=G.turn;if(!t||G.active!=='user'||t.rollNumber===0||t.rollNumber>=3||G.busy||G.pending)return;t.held[i]=!t.held[i];renderAll();const b=$('dice').querySelector(`[data-i="${i}"]`);if(b)b.focus();}
@@ -1264,7 +1361,7 @@ async function userRoll(){
   if(t.rollNumber===0){await doRoll();return;}
   if(t.rollNumber>=3||!t.held.some(x=>!x))return;
   const g=gradeKeep(t.held);G.stats.decisions++;
-  if(g.correct){G.stats.correct++;say(pickPraise(PRAISE),'',g.reasons[0]==='FUTURE_VALUE'?KEEP_FUTURE.p:(REASONS[g.reasons[0]]?REASONS[g.reasons[0]].p:''),'ok');await doRoll();return;}
+  if(g.correct){G.stats.correct++;say(pickPraise(PRAISE),'',composeKeep(g.reasons[0],g.facts,'').chip,'ok');await doRoll();return;}
   showAdvice({type:'keep',g,onFix:async()=>{t.held=g.recHeld.slice();renderAll();await doRoll();},onKeep:async()=>{await doRoll();}});
 }
 async function userRegister(){
@@ -1280,13 +1377,13 @@ async function userRegister(){
 async function registerFlow(cat,praiseOk){
   const p=me();if(TD.popcount(p.availableMask)===1){await registerAndAdvance(cat);return;} // no choice: not graded
   const g=gradeCategory(cat);G.stats.decisions++;
-  if(g.correct){G.stats.correct++;if(praiseOk)say(pickPraise(PRAISE_CAT),'',REASONS[g.reasons[0]]?REASONS[g.reasons[0]].p:'','ok');await registerAndAdvance(cat);return;}
+  if(g.correct){G.stats.correct++;if(praiseOk)say(pickPraise(PRAISE_CAT),'',composeCat(g.reasons[0],g.facts,'').chip,'ok');await registerAndAdvance(cat);return;}
   showAdvice({type:'category',g,cat,onFix:async()=>{await registerAndAdvance(g.rec.cat);},onKeep:async()=>{await registerAndAdvance(cat);}});
 }
 function showAdvice(opt){
   const g=opt.g;G.stats.advised++;
   const ph=opt.type==='keep'?keepActionPhrase(g.rec):catActionPhrase(g.rec.cat,g.rec.points);
-  const rl=reasonLines(g.reasons,ph.stem,opt.type==='keep');
+  const rl=reasonLines(g.reasons,ph.stem,opt.type==='keep',g.facts);
   const l1=`こういうときは ${ph.full}にゃ`;
   G.pending={type:opt.type,rec:g.rec,recHeld:g.recHeld,cat:opt.cat};
   say(l1,rl.reason,rl.chip,'warn');
@@ -1316,8 +1413,9 @@ async function kommyTurn(){
     let keepRec=null;
     if(rl>0){const ev=STRAT.evaluateKeep(stateOf(p),stateOf(o),redCounts(),t.green,rl);keepRec=ev.recommended;
       if(keepRec.nKept<5){
-        const reasons=TD.keepReasons({own:stateOf(p),opp:stateOf(o),green:t.green,rec:keepRec,scores:handScores(),remaining:ev.remaining,rerollsLeft:rl});
-        const ph=keepActionPhrase(keepRec);const rlns=reasonLines(reasons,ph.stem,true);
+        const kctx={own:stateOf(p),opp:stateOf(o),green:t.green,rec:keepRec,scores:handScores(),remaining:ev.remaining,rerollsLeft:rl,evalResult:ev,scoresCard:p.categoryScores};
+        const reasons=TD.keepReasons(kctx);const facts=TD.keepFacts(kctx);
+        const ph=keepActionPhrase(keepRec);const rlns=reasonLines(reasons,ph.stem,true,facts);
         say(`こういうときは ${ph.full}にゃ`,'',rlns.chip,'');
         await wait(rint(G.rng.pres,700,1200));if(gid!==G.gameId)return;
         t.held=heldFromAction(keepRec);renderAll();
@@ -1328,8 +1426,9 @@ async function kommyTurn(){
     }
     // register
     const ev=STRAT.evaluateCategory(stateOf(p),stateOf(o),redCounts(),t.green);const rec=ev.recommended;
-    const reasons=TD.categoryReasons({own:stateOf(p),opp:stateOf(o),evalResult:ev,rec,scores:handScores(),remaining:ev.remaining});
-    const ph=catActionPhrase(rec.cat,rec.points);const rlns=reasonLines(reasons,ph.stem);
+    const cctx={own:stateOf(p),opp:stateOf(o),evalResult:ev,rec,scores:handScores(),remaining:ev.remaining,scoresCard:p.categoryScores};
+    const reasons=TD.categoryReasons(cctx);const facts=TD.catFacts(cctx);
+    const ph=catActionPhrase(rec.cat,rec.points);const rlns=reasonLines(reasons,ph.stem,false,facts);
     const pre=(keepRec&&keepRec.nKept===5&&rl>0)?'この形はもう振らないにゃ。':'';
     say(`${pre}こういうときは ${ph.full}にゃ`,'',rlns.chip,'');
     await wait(rint(G.rng.pres,700,1200));if(gid!==G.gameId)return;
