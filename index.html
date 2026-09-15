@@ -963,7 +963,9 @@ class Strategy{
       actions.push({keep:kept,keepIdx:k,keepGreen:1,value:hold[gi*nKeep+k],secondary:sh?sh[gi*nKeep+k]:hold[gi*nKeep+k],nKept:n+1});}
     let best=-Infinity;for(const a of actions)if(a.value>best)best=a.value;
     for(const a of actions)a.correct=a.value>=best-tol-EPS;
-    const rec=actions.filter(a=>a.value>=best-EPS).sort((a,b)=>(b.secondary-a.secondary)||(b.nKept-a.nKept)||(b.keepGreen-a.keepGreen)||(a.keepIdx-b.keepIdx))[0];
+    // Keep an interchangeable red die so the green die can roll W (face 1).
+    const candidates=actions.filter(a=>a.value>=best-EPS&&!(green!==1&&a.keepGreen&&a.keep[gi]<red[gi]));
+    const rec=candidates.sort((a,b)=>(Math.abs(b.secondary-a.secondary)>EPS?b.secondary-a.secondary:0)||(b.nKept-a.nKept)||(b.keepGreen-a.keepGreen)||(a.keepIdx-b.keepIdx))[0];
     const evGain=(objective==='ev')?null:undefined;
     return{objective,tol,actions,best,recommended:rec,remaining,rerollsLeft,h,ri,gi,red,green,own,opp};
   }
