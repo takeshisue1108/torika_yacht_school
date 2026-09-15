@@ -111,6 +111,29 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
 .scorecard tr.sub td.v{font-weight:700}
 .scorecard .mini{font-weight:400;font-size:.72rem;color:var(--muted)}
 .scorecard tr.total td{background:var(--pink);font-weight:800;font-size:1rem;border-bottom:none;height:32px}
+/* アリスのうらない（タロットの札ボタンと確率表） */
+.scorecard th.n .hwrap{display:flex;align-items:center;justify-content:space-between;gap:4px;min-width:0}
+.scorecard .fortunebtn{flex:0 1 auto;display:inline-flex;align-items:center;gap:3px;min-width:0;min-height:26px;padding:0 6px;border-radius:8px;background:#f5ecff;border:1px solid #c9a6ee;color:#5e17eb;font-weight:800;font-size:.72rem;white-space:nowrap;line-height:1}
+@media (max-width:359px){.scorecard .fortunebtn{font-size:.66rem;padding:0 4px;gap:2px}}
+.scorecard .fortunebtn:not(:disabled):hover{background:#ecdcff}
+.scorecard .fortunebtn.on{background:#5e17eb;border-color:#5e17eb;color:#fff}
+.scorecard .fortunebtn .icon{font-size:.9rem}
+.scorecard table.fortune thead th.n{padding:2px 4px 3px;border-bottom:none}
+.scorecard table.fortune tr.cnt th{font-size:.78rem;color:var(--muted);font-weight:700;padding:3px 0;background:#fbf5f3;border-bottom:1px solid var(--line);text-align:center;height:24px}
+.scorecard table.fortune tr.cnt th.n{text-align:left;padding-left:6px;font-size:.72rem}
+.scorecard table.fortune tr.sec td{white-space:normal;font-size:.68rem;letter-spacing:0;line-height:1.25;height:auto;padding:3px 6px}
+.scorecard table.fortune td{height:32px}
+.scorecard table.fortune td.v.p{font-size:.92rem;padding:1px 0;color:#6b4f4f;overflow:hidden;letter-spacing:.01em}
+@media (max-width:359px){.scorecard table.fortune td.v.p{font-size:.82rem}}
+.scorecard table.fortune td.v.p.zero{color:#c9b3b3}
+.scorecard table.fortune td.v.p.role{text-align:left;padding-left:12px;font-weight:800;color:var(--ink)}
+.scorecard table.fortune td.v.p.role.zero{font-weight:600;color:#c9b3b3}
+.scorecard table.fortune td.v.p.top{font-weight:800;color:var(--ink);background:#fff8e6}
+.scorecard{position:relative}
+/* 光の帯は transform でなく背景位置で動かす（transform だと overflow:auto の領域が横に広がる） */
+/* 帯の幅は要素幅の 0.5 倍（画像 250% の 40〜60%）。位置 100% で帯が左端の外、0% で右端の外に来る */
+.scorecard.shine::after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(100deg,rgba(255,255,255,0) 40%,rgba(255,255,255,.9) 50%,rgba(255,255,255,0) 60%) no-repeat;background-size:250% 100%;background-position:100% 0;animation:shine .5s ease-in-out forwards}
+@keyframes shine{from{background-position:100% 0}to{background-position:0% 0}}
 .scorecard .qbtn{min-width:20px;min-height:20px;padding:0;border-radius:50%;font-size:.7rem;line-height:18px;margin-left:2px;vertical-align:middle}
 .scorecard td.flash{animation:flash 1s ease-out}
 @keyframes flash{0%{background:#fff0a0}100%{background:transparent}}
@@ -121,6 +144,10 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
 .scorecard.inline tr.sub td{height:22px}
 .scorecard.inline tr.total td{height:28px}
 
+/* ---------- icons (sprite defined at top of <body>) ---------- */
+.icon-defs{position:absolute;width:0;height:0;overflow:hidden}
+.icon{display:inline-block;flex:none;vertical-align:-.2em;fill:currentColor}
+.icon-tarot{width:1em;height:1.5em}
 /* ---------- kommy ---------- */
 .kommy{display:flex;flex-direction:column;align-items:center;gap:6px;min-height:0;padding:8px}
 .portrait{border:none;background:transparent;padding:0;min-height:0;border-radius:16px;flex:1;min-height:0;display:flex;align-items:flex-end;justify-content:center;max-height:100%}
@@ -290,6 +317,8 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
 </style>
 </head>
 <body>
+<!-- アイコンの定義（描画は <svg class="icon icon-tarot"><use href="#icon-tarot"/></svg>） -->
+<svg class="icon-defs" aria-hidden="true" focusable="false"><symbol id="icon-tarot" viewBox="0 0 476 710.4"><rect x="0" y="0" width="476" height="710.4" rx="33.0" fill="#5e17eb"/><rect x="22.5" y="22.5" width="431.0" height="665.4" rx="10.5" fill="#d973f9"/><path fill="#ffd058" d="M 264.9 208.1 L 295.1 269.6 L 363.0 279.5 C 387.6 283.1 397.4 313.4 379.6 330.8 L 330.6 378.6 L 342.2 446.2 C 346.3 470.7 320.6 489.4 298.6 477.8 L 237.9 445.9 L 177.2 477.8 C 155.2 489.4 129.4 470.7 133.6 446.2 L 145.2 378.6 L 96.2 330.8 C 78.4 313.4 88.2 283.1 112.8 279.5 L 180.7 269.6 L 210.9 208.1 C 222.0 185.8 253.8 185.8 264.9 208.1 Z"/></symbol></svg>
 <noscript><div style="padding:20px;font-family:sans-serif">このゲームの実行には JavaScript が必要です。ブラウザの JavaScript を有効にしてください。</div></noscript>
 <div id="app">
   <!-- Loading -->
@@ -628,6 +657,7 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
       <li>振り終えたら（0 点でも）どれかの役に記録します。初投や 2 投目の後でも記録できます。一度使った役は使えません。</li>
       <li>コミーと交互に 8 手番ずつ。合計点の高い方が勝ちです。</li>
       <li>あなたが「振り直す」「この役に記録」を押すと、コミーが手を添削します。正解なら褒め、違うときは原則と理由を示して「おすすめに直す」か「このまま進む」かを選べます。</li>
+      <li>KEEP を選べるあいだは、スコアカードの「アリスのうらない」で、次の 1 投で各目がちょうど何個そろうかの確率を見られます。うらない中は記録できません。「うらないを閉じる」で点数の表示に戻ります。</li>
       <li>キーボード：1〜5 でサイコロの KEEP 切り替え、R で振る、Enter で記録、Esc で閉じる。</li>
     </ul>
     <h3>役と得点</h3>
@@ -784,7 +814,7 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
 
 <div class="fanfare" id="fanfare" aria-hidden="true"></div>
 <div class="toast" id="toast" role="status"></div>
-<script>window.BUILD_INFO={"builtAt": "2026-09-14T23:39:03+0900", "strategySha256": "5548da3008ee7461", "corpusLines": 11322};</script>
+<script>window.BUILD_INFO={"builtAt": "2026-09-15T21:23:24+0900", "strategySha256": "7b0a7c857cd20215", "corpusLines": 11322};</script>
 <script>
 /* Trick Dice (JP Season 1) — rules, exact expected-score DP, HYBRID_REPORT_V1 policy, grading, reason codes.
    Works in Node (module.exports) and in the browser (window.TD). No dependencies. */
@@ -1090,7 +1120,32 @@ function catFacts(ctx){
     Bafter:after,bonusDone:own.upperRaw>=55,upperRaw:own.upperRaw,remaining};
 }
 
-const api={N_CAT,ALL,UPPER_FACES,MAX_TOTAL,RULES_ID,STRATEGY_ID,TOL_EV,TOL_EQ,CAT_IDS,scoreHand,scoreFromFaces,buildModel,solve,solveSync,reachableSums,popcount,Strategy,exactMatchEquity,propagate,keptFromHeld,sameAction,upperMargin,keepReasons,categoryReasons,keptShape,keepFacts,catFacts,straightOuts,CAT_NAMES_JA};
+/* アリスのうらない：次の 1 投のあと、目 face がちょうど k 個（k=0..5）そろう確率。
+   KEEP 中のダイスは固定、それ以外は振り直す。緑の W（物理面 1）はどの目にも数える（W＋赤 1×4 が 1 の 5 個扱いなのと同じ）。
+   赤の自由ダイスは 1/6、緑の自由ダイスは face=1 なら 1/6（W のみ）、face≧2 なら 2/6（W かその目）。 */
+function faceCountDist(redFaces,green,held,face){
+  let d=[1,0,0,0,0,0];
+  const conv=p=>{const n=[0,0,0,0,0,0];for(let k=0;k<6;k++){n[k]+=d[k]*(1-p);if(k<5)n[k+1]+=d[k]*p;}d=n;};
+  for(let i=0;i<4;i++)conv(held[i]?(redFaces[i]===face?1:0):1/6);
+  conv(held[4]?((green===1||green===face)?1:0):(face===1?1/6:2/6));
+  return d;
+}
+
+/* アリスのうらない：次の 1 投でフルハウス・L ストレート・ヨットが成立する確率（調査/うらない_役の確率.md）。
+   自由ダイスの全出目（最大 6^5=7776 通り）を総当たりし、盤面と同じ得点関数 scoreHand で判定する。 */
+function roleProbs(redFaces,green,held){
+  const free=[];for(let i=0;i<5;i++)if(!held[i])free.push(i);
+  const rf=redFaces.slice();let g=green;const hit=[0,0,0];let total=0;
+  const rec=idx=>{
+    if(idx===free.length){const red=[0,0,0,0,0,0];for(const f of rf)red[f-1]++;const sc=scoreHand(red,g);total++;
+      if(sc[5]>0)hit[0]++;if(sc[6]>0)hit[1]++;if(sc[7]>0)hit[2]++;return;}
+    const i=free[idx];for(let v=1;v<=6;v++){if(i===4)g=v;else rf[i]=v;rec(idx+1);}
+  };
+  rec(0);
+  return{fullHouse:hit[0]/total,largeStraight:hit[1]/total,yacht:hit[2]/total,outcomes:total};
+}
+
+const api={N_CAT,ALL,UPPER_FACES,MAX_TOTAL,RULES_ID,STRATEGY_ID,TOL_EV,TOL_EQ,CAT_IDS,scoreHand,scoreFromFaces,buildModel,solve,solveSync,reachableSums,popcount,Strategy,exactMatchEquity,propagate,keptFromHeld,sameAction,upperMargin,keepReasons,categoryReasons,keptShape,keepFacts,catFacts,straightOuts,CAT_NAMES_JA,faceCountDist,roleProbs};
 if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.TD=api;
 })(typeof window!=='undefined'?window:globalThis);
 
@@ -1133,7 +1188,7 @@ const rrange=(rng,lo,hi)=>lo+rng()*(hi-lo);
 
 /* ---------------- state ---------------- */
 let M=null,V=null,STRAT=null;
-const G={schemaVersion:1,rulesId:TD.RULES_ID,strategyId:TD.STRATEGY_ID,matchSeed:'',phase:'loading',active:'user',round:1,players:null,turn:null,stats:null,rng:null,first:'user',fast:false,chatOpen:false,lastPraise:-1,busy:false,pending:null,resultShown:false,gameId:0};
+const G={schemaVersion:1,rulesId:TD.RULES_ID,strategyId:TD.STRATEGY_ID,matchSeed:'',phase:'loading',active:'user',round:1,players:null,turn:null,stats:null,rng:null,first:'user',fast:false,chatOpen:false,lastPraise:-1,busy:false,pending:null,resultShown:false,gameId:0,fortune:false};
 function newPlayer(){return{availableMask:255,categoryScores:[null,null,null,null,null,null,null,null],upperRaw:0,bonusAwarded:false,total:0};}
 function recompute(p){let sum=0,up=0;for(let c=0;c<8;c++){const v=p.categoryScores[c];if(v!=null){sum+=v;if(c<5)up+=v;}}p.upperRaw=up;p.bonusAwarded=up>=55;p.total=sum+(p.bonusAwarded?40:0);
   let mask=0;for(let c=0;c<8;c++)if(p.categoryScores[c]==null)mask|=1<<c;p.availableMask=mask;
@@ -1144,6 +1199,14 @@ function actP(){return G.players[G.active];}function oppP(){return G.players[G.a
 function redCounts(){const r=[0,0,0,0,0,0];for(const f of G.turn.redFaces)r[f-1]++;return r;}
 function handScores(){return TD.scoreFromFaces(G.turn.redFaces,G.turn.green);}
 function rerollsLeft(){return 3-G.turn.rollNumber;}
+/* アリスのうらない：プレイヤーがキープを選べるときだけ使える */
+function canFortune(){const t=G.turn;return G.phase==='playing'&&G.active==='user'&&!!t&&t.rollNumber>0&&t.rollNumber<3&&!G.busy&&!G.pending;}
+function toggleFortune(){if(!G.fortune&&!canFortune())return;G.fortune=!G.fortune;const el=$('cardSp');const done=()=>{renderAll();const b=$('btnFortune');if(b)b.focus();};
+  if(REDUCED){done();return;}
+  // 薄い光がスコアカードの上を左から右へ走り（500 ms）、帯が中央を通る 250 ms で表が切り替わる
+  el.classList.remove('shine');void el.offsetWidth;el.classList.add('shine');clearTimeout(el._shineT);clearTimeout(el._shineE);
+  el._shineT=setTimeout(done,250);el._shineE=setTimeout(()=>el.classList.remove('shine'),560);}
+function fmtPct(p){if(p<=0)return'0%';if(p>=0.995)return'100%';if(p>=0.1)return Math.round(p*100)+'%';if(p>=0.0005)return(p*100).toFixed(1)+'%';return'≈0%';}
 function usedCount(p){return 8-TD.popcount(p.availableMask);}
 
 /* ---------------- utils ---------------- */
@@ -1203,8 +1266,25 @@ function renderCombined(el){
     const reg=(canSelect&&G.selCat===c)?`<button class="regbtn" id="btnRegister" aria-label="${CAT_SPEECH[c]} に記録する">記録</button>`:'';
     return`<tr data-row="${c}"${canSelect&&G.selCat===c?' class="selrow"':''}><td class="n" title="${CAT_DESC[c]}"><span class="nwrap">${ico}${reg}</span></td>${cell(u,'user',c)}${cell(k,'kommy',c)}</tr>`;};
   const Bu=TD.upperMargin(u.categoryScores),Bk=TD.upperMargin(k.categoryScores);
-  let h=`<table><colgroup><col style="width:50%"><col style="width:25%"><col style="width:25%"></colgroup><thead><tr><th class="n">役</th><th class="${active==='user'?'act':''}">あなた</th><th class="${active==='kommy'?'act':''}">コミー</th></tr></thead><tbody>`;
-  h+=`<tr class="sec"><td colspan="3">上段（2〜6）</td></tr>`;
+  if(G.fortune&&!canFortune())G.fortune=false; // キープを選べなくなったら自動で閉じる
+  const tarot='<svg class="icon icon-tarot" aria-hidden="true" focusable="false"><use href="#icon-tarot"/></svg>';
+  if(G.fortune){ // うらない中：点数の代わりに、次の 1 投で各目がちょうど何個そろうかの確率
+    const t=G.turn;
+    let h=`<table class="fortune"><colgroup><col style="width:15%"><col style="width:17%"><col style="width:17%"><col style="width:17%"><col style="width:17%"><col style="width:17%"></colgroup><thead><tr><th class="n" colspan="6"><span class="hwrap"><button class="fortunebtn on" id="btnFortune" aria-pressed="true" aria-label="うらないを閉じる（点数の表示に戻す）">${tarot}うらないを閉じる</button></span></th></tr></thead>`;
+    h+=`<tbody><tr class="sec"><td colspan="6">次の 1 投で、その目がちょうど何個そろうか（KEEP 中の目を含む。緑の W はどの目にも数える）</td></tr>`;
+    h+=`<tr class="cnt"><th class="n" scope="col">目</th>`;for(let k=1;k<=5;k++)h+=`<th scope="col">${k}個</th>`;h+=`</tr>`;
+    for(let f=1;f<=6;f++){const d=TD.faceCountDist(t.redFaces,t.green,t.held,f);let top=0;for(let k=1;k<=5;k++)if(d[k]>d[top])top=k; // 0 個も含めて最も起きやすい個数だけ強調
+      h+=`<tr data-face="${f}"><td class="n"><span class="nwrap"><span class="ico">${f}</span></span></td>`;
+      for(let k=1;k<=5;k++)h+=`<td class="v p${d[k]<=0?' zero':''}${k===top&&d[k]>0?' top':''}" aria-label="${f} が ${k} 個 ${fmtPct(d[k])}">${fmtPct(d[k])}</td>`;
+      h+=`</tr>`;}
+    const rp=TD.roleProbs(t.redFaces,t.green,t.held);
+    h+=`<tr class="sec"><td colspan="6">下段の役が次の 1 投でそろう確率</td></tr>`;
+    for(const[key,c]of[['fullHouse',5],['largeStraight',6],['yacht',7]]){const v=rp[key];
+      h+=`<tr data-role="${key}"><td class="n" colspan="2"><span class="nwrap"><span class="ico l">${CAT_LABEL[c]}</span></span></td><td class="v p role${v<=0?' zero':''}" colspan="4" aria-label="${CAT_SPEECH[c]} ${fmtPct(v)}">${fmtPct(v)}</td></tr>`;}
+    h+=`</tbody></table>`;el.innerHTML=h;return;}
+  const fbtn=canFortune()?`<button class="fortunebtn" id="btnFortune" aria-pressed="false" aria-label="アリスのうらない（目ごとの確率を見る）">${tarot}アリスのうらない</button>`:'';
+  let h=`<table><colgroup><col style="width:50%"><col style="width:25%"><col style="width:25%"></colgroup><thead><tr><th class="n"><span class="hwrap">役${fbtn}</span></th><th class="${active==='user'?'act':''}">あなた</th><th class="${active==='kommy'?'act':''}">コミー</th></tr></thead><tbody>`;
+  h+=`<tr class="sec"><td colspan="3">上段</td></tr>`;
   for(let c=0;c<5;c++)h+=row(c);
   h+=`<tr class="sub"><td class="n">上段合計 <span class="mini">/55</span></td><td class="v">${u.upperRaw}</td><td class="v">${k.upperRaw}</td></tr>`;
   h+=`<tr class="sub"><td class="n">余裕 B <button class="qbtn" data-q="B" aria-label="上段余裕の説明">?</button></td><td class="v">${Bu>=0?'+':''}${Bu}</td><td class="v">${Bk>=0?'+':''}${Bk}</td></tr>`;
@@ -1232,7 +1312,7 @@ function renderAll(anim){renderDice(anim);renderCards();renderControls();}
 function newMatch(seed){
   G.gameId++;G.matchSeed=seed||randomSeed();
   G.rng={dice:makeRng(G.matchSeed,'dice'),pres:makeRng(G.matchSeed,'presentation'),chat:makeRng(G.matchSeed,'chat')};
-  G.players={user:newPlayer(),kommy:newPlayer()};G.round=1;G.stats={decisions:0,correct:0,advised:0};G.phase='playing';G.fast=false;G.pending=null;G.busy=false;G.resultShown=false;G.selCat=null;G.koSel=null;
+  G.players={user:newPlayer(),kommy:newPlayer()};G.round=1;G.stats={decisions:0,correct:0,advised:0};G.phase='playing';G.fast=false;G.pending=null;G.busy=false;G.resultShown=false;G.selCat=null;G.koSel=null;G.fortune=false;
   G.first=G.rng.dice()<0.5?'user':'kommy';G.active=G.first;
   $('btnResultAgain').hidden=true;$('advice').classList.add('hidden');$('scrGame').classList.remove('advice-open');
   show('scrGame');
@@ -1242,7 +1322,7 @@ function newMatch(seed){
   const gid=G.gameId;setTimeout(()=>{if(gid===G.gameId&&G.phase==='playing')startTurn();},1000);
 }
 function startTurn(){
-  G.turn={rollNumber:0,redFaces:[1,1,1,1],green:1,held:[false,false,false,false,false],pendingAdvice:null};G.selCat=null;G.koSel=null;G.pending=null;G.busy=false;
+  G.turn={rollNumber:0,redFaces:[1,1,1,1],green:1,held:[false,false,false,false,false],pendingAdvice:null};G.selCat=null;G.koSel=null;G.pending=null;G.busy=false;G.fortune=false;
   $('advice').classList.add('hidden');$('scrGame').classList.remove('advice-open');
   if(G.active==='user'){say('さあ、どうするにゃ？','','','');renderAll();$('btnRoll').focus();}
   else{renderAll();kommyTurn();}
@@ -1252,7 +1332,7 @@ function drawRoll(){ // results fixed before animation
   const res={};for(const i of which)res[i]=rint(G.rng.dice,1,6);return res;
 }
 async function doRoll(){
-  const gid=G.gameId;const t=G.turn;const res=drawRoll();t.rollNumber++;G.busy=true;renderControls();
+  const gid=G.gameId;const t=G.turn;const res=drawRoll();t.rollNumber++;G.busy=true;G.fortune=false;renderControls();
   const idx=Object.keys(res).map(Number);
   if(idx.length&&!REDUCED){const t0=performance.now();while(performance.now()-t0<650){const anim={};for(const i of idx)anim[i]=rint(G.rng.pres,1,6);renderDice(anim);await sleep(80);if(gid!==G.gameId)return false;}}
   for(const i of idx){if(i===4)t.green=res[i];else t.redFaces[i]=res[i];}
@@ -1365,7 +1445,7 @@ async function userRoll(){
   showAdvice({type:'keep',g,onFix:async()=>{t.held=g.recHeld.slice();renderAll();await doRoll();},onKeep:async()=>{await doRoll();}});
 }
 async function userRegister(){
-  const t=G.turn;if(!t||G.active!=='user'||G.busy||G.pending||t.rollNumber===0||G.selCat==null)return;
+  const t=G.turn;if(!t||G.active!=='user'||G.busy||G.pending||G.fortune||t.rollNumber===0||G.selCat==null)return; // うらない中は記録できない
   const cat=G.selCat;
   if(t.rollNumber<3){ // early registration == keep all: grade as a keep decision first
     const all=[true,true,true,true,true];const g=gradeKeep(all);G.stats.decisions++;
@@ -1533,6 +1613,7 @@ document.addEventListener('click',e=>{const q=e.target.closest('[data-q="B"]');i
   const c=e.target.closest('button.cand');if(c&&!c.disabled&&!c.classList.contains('kommy')){const host=c.closest('.scorecard').id;G.selCat=+c.dataset.cat;renderAll();const again=document.querySelector(`#${host} [data-cat="${G.selCat}"]`);if(again)again.focus();}});
 $('btnRoll').addEventListener('click',userRoll);
 document.addEventListener('click',e=>{if(e.target.closest('#btnRegister'))userRegister();});
+document.addEventListener('click',e=>{if(e.target.closest('#btnFortune'))toggleFortune();});
 $('btnFast').addEventListener('click',()=>{G.fast=!G.fast;skipFlag=true;renderControls();});
 $('btnStart').addEventListener('click',()=>newMatch(debugSeed()));
 $('btnAgain').addEventListener('click',()=>{closeModal('ovResult');newMatch(null);});
@@ -1594,7 +1675,7 @@ function boot(){
   }catch(err){fail(err);}
   function fail(err){G.phase='error';$('errMsg').textContent='戦略データを準備できませんでした。'+(err&&err.message?'（'+err.message+'）':'');show('scrError');}
 }
-window.__TDT={G,get STRAT(){return STRAT;},newMatch,userRoll,userRegister,toggleHeld,gradeKeep,gradeCategory,openChat,chatSend,chatStop,closeChat,CHAT,handScores,heldFromAction,setSel:c=>{G.selCat=c;renderAll();}};
+window.__TDT={G,get STRAT(){return STRAT;},newMatch,userRoll,userRegister,toggleHeld,gradeKeep,gradeCategory,openChat,chatSend,chatStop,closeChat,CHAT,handScores,heldFromAction,toggleFortune,canFortune,setSel:c=>{G.selCat=c;renderAll();}};
 boot();
 })();
 
