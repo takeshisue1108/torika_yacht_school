@@ -13,6 +13,9 @@
   --ok:#3f8f5a; --ok-bg:#e6f4ea; --warn:#d98b2b; --warn-bg:#fff1dc; --focus:#2f6fd6;
   --radius:14px; --shadow:0 4px 14px rgba(120,70,70,.10);
 }
+/* 怒っているあいだの配色（灰みの薄紫）。body[data-mood] は app.js の applyMood() が付け外しする */
+body[data-mood="angry"]{--bg:#efe6f2;--pink:#e5cde9;--panel2:#f6effa}
+body,#app{transition:background-color .3s}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%}
 body{background:var(--bg);color:var(--ink);font-family:"Hiragino Maru Gothic ProN","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",system-ui,sans-serif;font-size:16px;line-height:1.45;overflow:hidden}
@@ -26,6 +29,8 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
 .btn-warn{background:var(--warn);color:#fff;border-color:var(--warn);font-weight:700}
 .btn-small{min-height:36px;min-width:36px;padding:4px 10px;font-size:.9rem}
 .hidden{display:none!important}
+/* hidden 属性は UA の規則なので、.badge などの display 指定に負ける。明示して勝たせる */
+[hidden]{display:none!important}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 /* ---------- app shell ---------- */
@@ -48,6 +53,9 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
 .advice-open .controls,.advice-open .hintline{display:none}
 .roundline{display:flex;justify-content:space-between;align-items:center;font-weight:700;padding:0 4px}
 .roundline .rolls{color:var(--muted);font-weight:600}
+/* ガチ対戦の札（ダイスの直上。flex の列なので align-self で中央に置く） */
+.mode-tag{align-self:center;background:#e5cde9;color:#5e17eb;font-weight:800;font-size:.85rem;letter-spacing:.06em;padding:2px 12px;border-radius:999px;line-height:1.4}
+@media (max-height:600px){.mode-tag{font-size:.75rem;padding:1px 10px;letter-spacing:.04em}}
 .dice{display:flex;justify-content:center;gap:10px;flex-wrap:nowrap;padding:12px 6px;background:var(--cream);border-radius:var(--radius)}
 .dslot{display:flex;flex-direction:column;align-items:center;gap:4px;flex:0 1 auto}
 .die{--sz:min(64px,14vw);width:var(--sz);height:var(--sz);border-radius:22%;border:none;padding:calc(var(--sz)*.13);min-width:0;min-height:0;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:2px;background:var(--red);box-shadow:0 4px 0 var(--red-dark),0 6px 12px rgba(0,0,0,.18);transition:transform .15s;position:relative;-webkit-tap-highlight-color:transparent}
@@ -156,6 +164,12 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
 .face svg{display:block;width:100%;height:100%;max-height:100%}
 .portrait .face{width:100%;height:100%}
 .face-title{width:min(260px,60vw);height:auto;margin:0 auto}
+/* タイトルの顔は叩く・なでるの対象。横になぞってもページが動かないよう touch-action を切る */
+#scrTitle .face-title{position:relative;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab;-webkit-tap-highlight-color:transparent}
+#scrTitle .face-title.squash{animation:squash .12s ease-out}
+@keyframes squash{0%{transform:scale(1,1)}50%{transform:scale(1.1,.84)}100%{transform:scale(1,1)}}
+.heart{position:absolute;color:#f08ca6;line-height:1;pointer-events:none;z-index:2;animation:heartUp .9s ease-out forwards}
+@keyframes heartUp{0%{opacity:0;transform:translate(0,0) scale(.7)}15%{opacity:1}100%{opacity:0;transform:translate(var(--hx,0),var(--hy,-60px)) scale(1.15)}}
 .face-title svg{height:auto}
 /* expressions: parts use transform-box so CSS transforms pivot on the part itself */
 .kommy-svg .p-eyes,.kommy-svg .p-mouth,.kommy-svg .p-brows,.kommy-svg .p-ahoge,.kommy-svg .p-cheeks{transform-box:fill-box;transform-origin:center;transition:transform .25s ease,opacity .25s ease}
@@ -173,6 +187,10 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
 .face[data-expr="sad"] .p-eyes{transform:scaleY(.45) translateY(6px)}
 .face[data-expr="sad"] .p-mouth{transform:scaleY(.6) translateY(-4px)}
 .face[data-expr="sad"] .p-ahoge{transform:rotate(-25deg)}
+/* 怒り：眉を下げ、目を細め、口を平らにする（眉は 1 グループなので下げて縮める） */
+.face[data-expr="angry"] .p-brows{transform:translateY(6px) scaleY(.85)}
+.face[data-expr="angry"] .p-eyes{transform:scaleY(.6) translateY(4px)}
+.face[data-expr="angry"] .p-mouth{transform:scaleY(.35)}
 .face[data-expr="talk"] .p-mouth{animation:talk .35s ease-in-out infinite alternate}
 .face[data-expr="talk"] .p-eyes{transform:scaleY(.85)}
 @keyframes wag{0%{transform:rotate(0)}50%{transform:rotate(14deg)}100%{transform:rotate(0)}}
@@ -192,6 +210,7 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
 .bubble .l1{font-weight:700}
 .bubble .l2{color:#6b4f4f;border-top:1px dashed var(--line);margin-top:4px;padding-top:4px}
 .bubble .l2:empty{display:none}
+.bubble .l2hint{display:none;color:var(--muted);font-size:.72rem;text-align:right;cursor:pointer;line-height:1.2}
 .bubble.ok{border-color:var(--ok)}
 .bubble.warn{border-color:var(--warn)}
 .tapnote{font-size:.75rem;color:var(--muted)}
@@ -218,7 +237,11 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
 }
 @media (max-height:600px){
   .kommy-row .portrait{max-height:96px;width:min(18vw,80px)}
-  .kommy-row .bubble{max-height:96px;font-size:.88rem}
+  .kommy-row .bubble{font-size:.88rem}
+  /* 理由の行は先頭 1 行＋「…」に折り畳み、タップで展開（96px の上限で枠の外へはみ出していたのをやめた） */
+  .kommy-row .bubble .l2:not(.open){display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer}
+  .kommy-row .bubble .l2:not(.open):not(:empty)+.l2hint{display:block}
+  .kommy-row .bubble .l2.open{cursor:pointer}
   .dice{padding:6px}
   .die{--sz:min(52px,12vw)}
   .board{gap:6px;padding:6px}
@@ -273,6 +296,10 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
 .result .big{display:flex;justify-content:center;gap:28px;font-size:1.3rem;font-weight:800;margin:6px 0}
 .result .big span{display:block;font-size:.8rem;color:var(--muted);font-weight:400}
 .result .stat{text-align:center;background:var(--ok-bg);border-radius:10px;padding:6px;margin:6px 0}
+.result .restitle{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
+.result .restitle h2{margin-bottom:0}
+.badge{display:inline-block;background:var(--brown);color:#fff;font-size:.78rem;font-weight:800;padding:3px 10px;border-radius:999px;letter-spacing:.04em}
+#shareBox{display:block;width:100%;margin-top:10px;font:inherit;font-size:.85rem;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--cream);color:var(--ink);resize:none}
 
 /* ---------- chat ---------- */
 .chat{display:flex;flex-direction:column;height:min(640px,calc(100dvh - 24px));max-height:calc(100dvh - 24px);padding:0;overflow:hidden}
@@ -312,6 +339,9 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
   .fanfare.show{animation:none;opacity:1;transform:translate(-50%,-50%);transition:opacity .2s}
   .die,.scorecard tr.flash td{transition:none;animation:none}
   .chat .dots span{animation:none;opacity:.7}
+  body,#app{transition:none}
+  #scrTitle .face-title.squash{animation:none}
+  .heart{animation:none;opacity:1}
 }
 
 </style>
@@ -335,14 +365,6 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
   <path d="M 330,110 C 380,120 398,160 404,200 C 412,240 410,270 418,288 C 426,292 433,297 432,303 C 425,303 418,301 412,305 C 411,335 410,362 410,390 L 348,390 C 350,360 350,330 345,305 C 330,318 318,322 310,322 C 322,308 330,292 334,270 C 340,240 340,200 336,160 C 334,140 332,125 330,110 Z"/>
   <path d="M 380,230 C 384,280 384,340 380,390" fill="none" stroke="#cdb9ba" stroke-width="2"/>
   <path d="M 60,250 C 58,300 60,350 63,390" fill="none" stroke="#cdb9ba" stroke-width="2"/>
-</g>
-<defs>
-  <linearGradient id="neck-grad-1" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0" stop-color="#e2c1c0"/><stop offset="1" stop-color="#f6dcdb"/>
-  </linearGradient>
-</defs>
-<g class="p-neck">
-  <path d="M 244,320 L 244,366 C 245,378 248,386 250,392 L 306,392 C 308,376 310,350 310,320 Z" fill="url(#neck-grad-1)" stroke="#5a2a2c" stroke-width="4" stroke-linejoin="round"/>
 </g>
 <g class="p-ears" stroke="#5a2a2c" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
   <g class="p-ear_left">
@@ -441,14 +463,6 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
   <path d="M 380,230 C 384,280 384,340 380,390" fill="none" stroke="#cdb9ba" stroke-width="2"/>
   <path d="M 60,250 C 58,300 60,350 63,390" fill="none" stroke="#cdb9ba" stroke-width="2"/>
 </g>
-<defs>
-  <linearGradient id="neck-grad-2" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0" stop-color="#e2c1c0"/><stop offset="1" stop-color="#f6dcdb"/>
-  </linearGradient>
-</defs>
-<g class="p-neck">
-  <path d="M 244,320 L 244,366 C 245,378 248,386 250,392 L 306,392 C 308,376 310,350 310,320 Z" fill="url(#neck-grad-2)" stroke="#5a2a2c" stroke-width="4" stroke-linejoin="round"/>
-</g>
 <g class="p-ears" stroke="#5a2a2c" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
   <g class="p-ear_left">
     <path d="M 67,143 C 78,105 92,68 110,35 C 128,50 148,66 168,80 C 130,92 95,112 67,143 Z" fill="#f4f3f4"/>
@@ -523,9 +537,9 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
 </g>
 </svg></div>
     <div class="acts">
-      <button class="btn-primary" id="btnStart">はじめる</button>
+      <button class="btn-primary" id="btnStart" data-mode="tutor">はじめる</button>
       <button id="btnHowto">遊び方</button>
-      <button id="btnPoints">攻略の要点</button>
+      <button id="btnSecond" data-mode="serious">ガチ対戦</button>
     </div>
   </section>
   <!-- Game -->
@@ -537,6 +551,7 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
             <span id="roundLbl">ラウンド 1 / 8</span><span class="rolls" id="rollLbl">残り振り直し 2 回</span>
             <span class="menu"><button class="btn-small" id="btnResultAgain" hidden>結果</button><button class="btn-small" id="btnHowto2" aria-label="遊び方" title="遊び方">？</button><button class="btn-small" id="btnRestart" aria-label="最初からやり直す" title="最初からやり直す">⟳</button></span>
           </div>
+          <div class="mode-tag" id="modeTag" hidden>ガチ対戦</div>
           <div class="dice" id="dice" role="group" aria-label="サイコロ"></div>
           <div class="controls">
             <button class="btn-accent" id="btnRoll">ダイスを振る</button>
@@ -555,14 +570,6 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
   <path d="M 330,110 C 380,120 398,160 404,200 C 412,240 410,270 418,288 C 426,292 433,297 432,303 C 425,303 418,301 412,305 C 411,335 410,362 410,390 L 348,390 C 350,360 350,330 345,305 C 330,318 318,322 310,322 C 322,308 330,292 334,270 C 340,240 340,200 336,160 C 334,140 332,125 330,110 Z"/>
   <path d="M 380,230 C 384,280 384,340 380,390" fill="none" stroke="#cdb9ba" stroke-width="2"/>
   <path d="M 60,250 C 58,300 60,350 63,390" fill="none" stroke="#cdb9ba" stroke-width="2"/>
-</g>
-<defs>
-  <linearGradient id="neck-grad-3" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0" stop-color="#e2c1c0"/><stop offset="1" stop-color="#f6dcdb"/>
-  </linearGradient>
-</defs>
-<g class="p-neck">
-  <path d="M 244,320 L 244,366 C 245,378 248,386 250,392 L 306,392 C 308,376 310,350 310,320 Z" fill="url(#neck-grad-3)" stroke="#5a2a2c" stroke-width="4" stroke-linejoin="round"/>
 </g>
 <g class="p-ears" stroke="#5a2a2c" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
   <g class="p-ear_left">
@@ -637,7 +644,7 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
   <path d="M 410,214 C 416,224 428,226 433,217 C 436,209 428,204 423,209 C 419,215 426,221 431,216"/>
 </g>
 </svg></div></button>
-        <div class="bubble" id="bubbleSp" aria-live="polite"><div class="who">コミー</div><div class="chipwrap"></div><div class="l1">…</div><div class="l2"></div></div>
+        <div class="bubble" id="bubbleSp" aria-live="polite"><div class="who">コミー</div><div class="chipwrap"></div><div class="l1">…</div><div class="l2" role="button" tabindex="0" aria-expanded="false" title="タップで全文を表示"></div><div class="l2hint" aria-hidden="true">▼ タップで全文</div></div>
           </div>
           <div class="scorecard inline" id="cardSp"></div>
         </div>
@@ -675,31 +682,15 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
   </div>
 </div>
 
-<!-- Points -->
-<div class="overlay hidden" id="ovPoints" role="dialog" aria-modal="true" aria-labelledby="pointsTitle">
-  <div class="modal">
-    <h2 id="pointsTitle">攻略の要点</h2>
-    <ul>
-      <li><b>W は原則として残す。</b>どの目にもなれて、70 点ヨットも作れる。</li>
-      <li><b>上段（2〜6）は各目 3 個が基準。</b>合計 55 で +40。基準に対して 5 点まで不足できる（上段余裕 B）。6 や 5 の 3 個は回復力が高く、2 や 3 は 0 点回避の逃がし役にしやすい。</li>
-      <li><b>完成した役は崩さない。</b>フルハウス・L ストレート・ヨットはその場で取る。</li>
-      <li><b>2・3・4・5 の開放待ち</b>は両端 2 面で完成する。W が絡めばさらに広い。</li>
-      <li><b>赤の二対＋緑</b>はフルハウスの 3 面待ち。1 振りで 50%、2 振り残しで 75%。</li>
-      <li><b>残り 2 役</b>からは相手の点を見る。リードなら 0 点を避けて安定、劣勢なら逆転できる役（L ストレート・ヨット）を残す。</li>
-      <li><b>最終手番</b>は必要点（相手の点 − 自分の点）を上回る確率だけを最大にする。</li>
-    </ul>
-    <div class="acts"><button class="btn-primary" data-close>閉じる</button></div>
-  </div>
-</div>
-
 <!-- Result -->
 <div class="overlay hidden" id="ovResult" role="dialog" aria-modal="true" aria-labelledby="resTitle">
   <div class="modal result">
-    <h2 id="resTitle">勝利！</h2>
+    <div class="restitle"><h2 id="resTitle">勝利！</h2><span class="badge" id="resBadge" hidden>ガチ対戦</span></div>
     <div class="big"><div>あなた<span>合計</span><span id="resMe" style="font-size:1.4rem;color:var(--ink);font-weight:800"></span></div><div>コミー<span>合計</span><span id="resKo" style="font-size:1.4rem;color:var(--ink);font-weight:800"></span></div></div>
     <div class="stat" id="resStat"></div>
     <div id="resTable"></div>
-    <div class="acts"><button class="btn-primary" id="btnAgain">もう一度</button><button id="btnViewBoard">盤面を見る</button></div>
+    <div class="acts"><button class="btn-primary" id="btnAgain">もう一度</button><button id="btnShare" hidden>X で共有</button><button id="btnViewBoard">盤面を見る</button><button id="btnTitle">タイトルへ戻る</button></div>
+    <textarea id="shareBox" readonly rows="3" hidden aria-label="共有する文"></textarea>
   </div>
 </div>
 
@@ -716,14 +707,6 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
   <path d="M 330,110 C 380,120 398,160 404,200 C 412,240 410,270 418,288 C 426,292 433,297 432,303 C 425,303 418,301 412,305 C 411,335 410,362 410,390 L 348,390 C 350,360 350,330 345,305 C 330,318 318,322 310,322 C 322,308 330,292 334,270 C 340,240 340,200 336,160 C 334,140 332,125 330,110 Z"/>
   <path d="M 380,230 C 384,280 384,340 380,390" fill="none" stroke="#cdb9ba" stroke-width="2"/>
   <path d="M 60,250 C 58,300 60,350 63,390" fill="none" stroke="#cdb9ba" stroke-width="2"/>
-</g>
-<defs>
-  <linearGradient id="neck-grad-4" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0" stop-color="#e2c1c0"/><stop offset="1" stop-color="#f6dcdb"/>
-  </linearGradient>
-</defs>
-<g class="p-neck">
-  <path d="M 244,320 L 244,366 C 245,378 248,386 250,392 L 306,392 C 308,376 310,350 310,320 Z" fill="url(#neck-grad-4)" stroke="#5a2a2c" stroke-width="4" stroke-linejoin="round"/>
 </g>
 <g class="p-ears" stroke="#5a2a2c" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
   <g class="p-ear_left">
@@ -809,12 +792,12 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
 
 <!-- Confirm restart -->
 <div class="overlay hidden" id="ovConfirm" role="dialog" aria-modal="true" aria-labelledby="confTitle">
-  <div class="modal"><h2 id="confTitle">最初からやり直す？</h2><p>今の試合を捨てて、新しい試合を始めます。</p><div class="acts"><button class="btn-warn" id="btnConfirmYes">やり直す</button><button data-close>戻る</button></div></div>
+  <div class="modal"><h2 id="confTitle">最初からやり直す？</h2><p>今の試合を捨てて、タイトル画面に戻ります。</p><div class="acts"><button class="btn-warn" id="btnConfirmYes">やり直す</button><button data-close>戻る</button></div></div>
 </div>
 
 <div class="fanfare" id="fanfare" aria-hidden="true"></div>
 <div class="toast" id="toast" role="status"></div>
-<script>window.BUILD_INFO={"builtAt": "2026-09-15T21:23:24+0900", "strategySha256": "7b0a7c857cd20215", "corpusLines": 11322};</script>
+<script>window.BUILD_INFO={"builtAt": "2026-09-15T22:51:23+0900", "strategySha256": "275835a3289eeee6", "corpusLines": 11322};</script>
 <script>
 /* Trick Dice (JP Season 1) — rules, exact expected-score DP, HYBRID_REPORT_V1 policy, grading, reason codes.
    Works in Node (module.exports) and in the browser (window.TD). No dependencies. */
@@ -993,7 +976,16 @@ class Strategy{
       actions.push({keep:kept,keepIdx:k,keepGreen:1,value:hold[gi*nKeep+k],secondary:sh?sh[gi*nKeep+k]:hold[gi*nKeep+k],nKept:n+1});}
     let best=-Infinity;for(const a of actions)if(a.value>best)best=a.value;
     for(const a of actions)a.correct=a.value>=best-tol-EPS;
-    const rec=actions.filter(a=>a.value>=best-EPS).sort((a,b)=>(b.secondary-a.secondary)||(b.nKept-a.nKept)||(b.keepGreen-a.keepGreen)||(a.keepIdx-b.keepIdx))[0];
+    // 同点の候補から推奨を 1 つ選ぶ。
+    // (1) 緑が W でない目 g を見せているとき、「緑 g を残して同じ目の赤 g を振る」行動は
+    //     「赤 g を残して緑を振る」行動に弱く支配される（緑を振れば W が出る余地がある）ので候補から外す。
+    //     入れ替え先の行動は必ず合法で同点集合に入るが、念のため空なら同点集合へ退避する。
+    // (2) 二次評価は別々の表から来るため 1e-16 程度の丸め誤差を持つ。誤差で推奨が決まらないよう 1e-9 単位に丸めた鍵で比べる。
+    const ties=actions.filter(a=>a.value>=best-EPS);
+    const undominated=ties.filter(a=>!(green!==1&&a.keepGreen&&a.keep[gi]<red[gi]));
+    const pool=undominated.length?undominated:ties;
+    const sk=a=>Math.round(a.secondary*1e9);
+    const rec=pool.sort((a,b)=>(sk(b)-sk(a))||(b.nKept-a.nKept)||(b.keepGreen-a.keepGreen)||(a.keepIdx-b.keepIdx))[0];
     const evGain=(objective==='ev')?null:undefined;
     return{objective,tol,actions,best,recommended:rec,remaining,rerollsLeft,h,ri,gi,red,green,own,opp};
   }
@@ -1188,7 +1180,7 @@ const rrange=(rng,lo,hi)=>lo+rng()*(hi-lo);
 
 /* ---------------- state ---------------- */
 let M=null,V=null,STRAT=null;
-const G={schemaVersion:1,rulesId:TD.RULES_ID,strategyId:TD.STRATEGY_ID,matchSeed:'',phase:'loading',active:'user',round:1,players:null,turn:null,stats:null,rng:null,first:'user',fast:false,chatOpen:false,lastPraise:-1,busy:false,pending:null,resultShown:false,gameId:0,fortune:false};
+const G={schemaVersion:1,rulesId:TD.RULES_ID,strategyId:TD.STRATEGY_ID,matchSeed:'',phase:'loading',active:'user',round:1,players:null,turn:null,stats:null,rng:null,first:'user',fast:false,chatOpen:false,lastPraise:-1,busy:false,pending:null,resultShown:false,gameId:0,fortune:false,mode:'tutor',mood:'normal'};
 function newPlayer(){return{availableMask:255,categoryScores:[null,null,null,null,null,null,null,null],upperRaw:0,bonusAwarded:false,total:0};}
 function recompute(p){let sum=0,up=0;for(let c=0;c<8;c++){const v=p.categoryScores[c];if(v!=null){sum+=v;if(c<5)up+=v;}}p.upperRaw=up;p.bonusAwarded=up>=55;p.total=sum+(p.bonusAwarded?40:0);
   let mask=0;for(let c=0;c<8;c++)if(p.categoryScores[c]==null)mask|=1<<c;p.availableMask=mask;
@@ -1200,7 +1192,7 @@ function redCounts(){const r=[0,0,0,0,0,0];for(const f of G.turn.redFaces)r[f-1]
 function handScores(){return TD.scoreFromFaces(G.turn.redFaces,G.turn.green);}
 function rerollsLeft(){return 3-G.turn.rollNumber;}
 /* アリスのうらない：プレイヤーがキープを選べるときだけ使える */
-function canFortune(){const t=G.turn;return G.phase==='playing'&&G.active==='user'&&!!t&&t.rollNumber>0&&t.rollNumber<3&&!G.busy&&!G.pending;}
+function canFortune(){const t=G.turn;return G.mode!=='serious'&&G.phase==='playing'&&G.active==='user'&&!!t&&t.rollNumber>0&&t.rollNumber<3&&!G.busy&&!G.pending;}
 function toggleFortune(){if(!G.fortune&&!canFortune())return;G.fortune=!G.fortune;const el=$('cardSp');const done=()=>{renderAll();const b=$('btnFortune');if(b)b.focus();};
   if(REDUCED){done();return;}
   // 薄い光がスコアカードの上を左から右へ走り（500 ms）、帯が中央を通る 250 ms で表が切り替わる
@@ -1225,9 +1217,12 @@ function keptPhrase(keep,keepGreen){const parts=[];for(let f=1;f<=6;f++)for(let 
 
 /* ---------------- speech ---------------- */
 function setExpr(name){document.querySelectorAll('#scrGame .face').forEach(f=>f.dataset.expr=name);}
-function say(l1,l2,chip,tone){setExpr(tone==='ok'?'happy':tone==='warn'?'oops':tone==='sad'?'sad':(G.active==='kommy'&&G.phase==='playing'?'think':'normal'));for(const id of['bubbleSp']){const b=$(id);b.classList.remove('ok','warn');if(tone)b.classList.add(tone);
+/* 既定の表情。ガチ対戦の試合中と結果では怒り顔に戻す（tone つきの happy/oops/sad とチャットの think/talk が優先） */
+function baseExpr(){if(G.mode==='serious'&&(G.phase==='playing'||G.phase==='result'))return'angry';return G.active==='kommy'&&G.phase==='playing'?'think':'normal';}
+function say(l1,l2,chip,tone){setExpr(tone==='ok'?'happy':tone==='warn'?'oops':tone==='sad'?'sad':baseExpr());for(const id of['bubbleSp']){const b=$(id);b.classList.remove('ok','warn');if(tone)b.classList.add(tone);
   const cw=b.querySelector('.chipwrap');cw.textContent='';if(chip){const s=document.createElement('span');s.className='chip';s.textContent=chip;cw.appendChild(s);}
-  b.querySelector('.l1').textContent=l1||'';b.querySelector('.l2').textContent=l2||'';}}
+  b.querySelector('.l1').textContent=l1||'';const e2=b.querySelector('.l2');e2.textContent=l2||'';e2.classList.remove('open');e2.setAttribute('aria-expanded','false');}}
+function toggleReason(){const e2=$('bubbleSp').querySelector('.l2');if(!e2.textContent)return;const open=e2.classList.toggle('open');e2.setAttribute('aria-expanded',String(open));}
 function pickPraise(list){let i;do{i=rint(G.rng.pres,0,list.length-1);}while(list.length>1&&i===G.lastPraise);G.lastPraise=i;return list[i];}
 
 /* ---------------- rendering ---------------- */
@@ -1300,6 +1295,7 @@ function renderControls(){
   $('btnRoll').disabled=!(user&&(t.rollNumber===0||(t.rollNumber<3&&t.held.some(x=>!x))));
   $('btnRoll').textContent=t&&t.rollNumber>0?'振り直す':'ダイスを振る';
 
+  $('modeTag').hidden=G.mode!=='serious';
   $('btnFast').hidden=!(G.active==='kommy'&&G.phase==='playing');$('btnFast').textContent=G.fast?'早送り中':'早送り';
   $('roundLbl').textContent=`ラウンド ${Math.min(G.round,8)} / 8・${G.active==='user'?'あなた':'コミー'}の番`;
   $('rollLbl').textContent=t?(t.rollNumber===0?'まだ振っていません':`残り振り直し ${rerollsLeft()} 回`):'';
@@ -1309,13 +1305,14 @@ function renderControls(){
 function renderAll(anim){renderDice(anim);renderCards();renderControls();}
 
 /* ---------------- match flow ---------------- */
-function newMatch(seed){
+function newMatch(seed,mode){
+  if(mode)G.mode=mode;
   G.gameId++;G.matchSeed=seed||randomSeed();
   G.rng={dice:makeRng(G.matchSeed,'dice'),pres:makeRng(G.matchSeed,'presentation'),chat:makeRng(G.matchSeed,'chat')};
   G.players={user:newPlayer(),kommy:newPlayer()};G.round=1;G.stats={decisions:0,correct:0,advised:0};G.phase='playing';G.fast=false;G.pending=null;G.busy=false;G.resultShown=false;G.selCat=null;G.koSel=null;G.fortune=false;
   G.first=G.rng.dice()<0.5?'user':'kommy';G.active=G.first;
   $('btnResultAgain').hidden=true;$('advice').classList.add('hidden');$('scrGame').classList.remove('advice-open');
-  show('scrGame');
+  show('scrGame');G.mood='normal';applyMood();
   say(G.first==='user'?'あなたが先手にゃ。':'コミーが先手にゃ。','', '', '');
   toast(G.first==='user'?'あなたが先手':'コミーが先手');
   G.turn=null;renderAll();
@@ -1430,7 +1427,7 @@ function reasonLines(reasons,stem,isKeep,facts){
   const compose=isKeep?composeKeep:composeCat;
   const main=compose(reasons[0],facts,stem);
   let reason=main.reason;
-  if(reasons[1]){const sub=compose(reasons[1],facts,stem);let tail=sub.reason.replace(/^.*?のは、/,'').replace(/（[^（）]*）$/,'');tail=tail.replace(/だからにゃ$/,'なのも大事にゃ').replace(/からにゃ$/,'のも大事にゃ').replace(/ためにゃ$/,'のも大事にゃ').replace(/にゃ$/,'のも大事にゃ');reason+=`　${tail}`;}
+  if(reasons[1]){const sub=compose(reasons[1],facts,stem);let tail=sub.reason.replace(/^.*?のは、/,'').replace(/（[^（）]*）$/,'');tail=/だからにゃ$/.test(tail)?tail.replace(/だからにゃ$/,'なのも大事にゃ'):/からにゃ$/.test(tail)?tail.replace(/からにゃ$/,'のも大事にゃ'):/ためにゃ$/.test(tail)?tail.replace(/ためにゃ$/,'のも大事にゃ'):tail.replace(/にゃ$/,'のも大事にゃ'); /* 置換は 1 段だけ（つなげると前段の結果に後段が当たり「のも大事のも大事にゃ」になる） */reason+=`　${tail}`;}
   return{chip:main.chip,reason};
 }
 
@@ -1440,6 +1437,8 @@ async function userRoll(){
   const t=G.turn;if(!t||G.active!=='user'||G.busy||G.pending)return;
   if(t.rollNumber===0){await doRoll();return;}
   if(t.rollNumber>=3||!t.held.some(x=>!x))return;
+  /* ガチ対戦は採点しない */
+  if(G.mode==='serious'){await doRoll();return;}
   const g=gradeKeep(t.held);G.stats.decisions++;
   if(g.correct){G.stats.correct++;say(pickPraise(PRAISE),'',composeKeep(g.reasons[0],g.facts,'').chip,'ok');await doRoll();return;}
   showAdvice({type:'keep',g,onFix:async()=>{t.held=g.recHeld.slice();renderAll();await doRoll();},onKeep:async()=>{await doRoll();}});
@@ -1447,6 +1446,8 @@ async function userRoll(){
 async function userRegister(){
   const t=G.turn;if(!t||G.active!=='user'||G.busy||G.pending||G.fortune||t.rollNumber===0||G.selCat==null)return; // うらない中は記録できない
   const cat=G.selCat;
+  /* ガチ対戦は採点も助言もせず、そのまま記録する（早期登録も同じ） */
+  if(G.mode==='serious'){await registerAndAdvance(cat);return;}
   if(t.rollNumber<3){ // early registration == keep all: grade as a keep decision first
     const all=[true,true,true,true,true];const g=gradeKeep(all);G.stats.decisions++;
     if(!g.correct){showAdvice({type:'keep',g,early:true,onFix:async()=>{t.held=g.recHeld.slice();renderAll();await doRoll();},onKeep:async()=>{await registerFlow(cat,false);}});return;}
@@ -1483,7 +1484,7 @@ function showAdvice(opt){
 
 /* ---------------- kommy turn ---------------- */
 async function kommyTurn(){
-  const gid=G.gameId;const p=ko(),o=me();
+  const gid=G.gameId;const p=ko(),o=me();const quiet=G.mode==='serious';
   say('コミーの番にゃ。','','','');
   await wait(rint(G.rng.pres,500,900));if(gid!==G.gameId)return;
   if(!await doRoll())return;
@@ -1493,6 +1494,8 @@ async function kommyTurn(){
     let keepRec=null;
     if(rl>0){const ev=STRAT.evaluateKeep(stateOf(p),stateOf(o),redCounts(),t.green,rl);keepRec=ev.recommended;
       if(keepRec.nKept<5){
+        /* ガチ対戦：原則も理由も言わず、手だけ指す */
+        if(quiet){t.held=heldFromAction(keepRec);renderAll();await wait(rint(G.rng.pres,500,900));if(gid!==G.gameId)return;if(!await doRoll())return;continue;}
         const kctx={own:stateOf(p),opp:stateOf(o),green:t.green,rec:keepRec,scores:handScores(),remaining:ev.remaining,rerollsLeft:rl,evalResult:ev,scoresCard:p.categoryScores};
         const reasons=TD.keepReasons(kctx);const facts=TD.keepFacts(kctx);
         const ph=keepActionPhrase(keepRec);const rlns=reasonLines(reasons,ph.stem,true,facts);
@@ -1506,6 +1509,10 @@ async function kommyTurn(){
     }
     // register
     const ev=STRAT.evaluateCategory(stateOf(p),stateOf(o),redCounts(),t.green);const rec=ev.recommended;
+    /* ガチ対戦：結果だけを言う */
+    if(quiet){G.koSel=rec.cat;renderAll();await wait(rint(G.rng.pres,500,900));if(gid!==G.gameId)return;
+      const pts=handScores()[rec.cat];say(`${CAT_SPEECH[rec.cat]}に ${pts} 点にゃ`,'','','');
+      await registerAndAdvance(rec.cat);return;}
     const cctx={own:stateOf(p),opp:stateOf(o),evalResult:ev,rec,scores:handScores(),remaining:ev.remaining,scoresCard:p.categoryScores};
     const reasons=TD.categoryReasons(cctx);const facts=TD.catFacts(cctx);
     const ph=catActionPhrase(rec.cat,rec.points);const rlns=reasonLines(reasons,ph.stem,false,facts);
@@ -1524,14 +1531,92 @@ function showResult(){
   G.phase='result';G.turn=null;renderAll();
   const a=me().total,b=ko().total;const title=a>b?'勝利！':a<b?'敗北…':'引き分け';
   $('resTitle').textContent=title;$('resMe').textContent=a;$('resKo').textContent=b;
-  const st=G.stats;$('resStat').textContent=`助言を受けずに正解した戦略判断：${st.correct} / ${st.decisions}`;
+  const st=G.stats;const rs=$('resStat');const serious=G.mode==='serious';
+  /* ガチ対戦は札を出し、統計の行を出さない。共有ボタンは勝利のときだけ */
+  $('resBadge').hidden=!serious;rs.hidden=serious;rs.textContent=serious?'':`助言を受けずに正解した戦略判断：${st.correct} / ${st.decisions}`;
+  $('btnShare').hidden=!(a>b);const sb=$('shareBox');sb.hidden=true;sb.value='';
   let h='<table><tr><th>役</th><th class="num">あなた</th><th class="num">コミー</th></tr>';
   for(let c=0;c<8;c++){h+=`<tr><td>${CAT_LABEL[c]}</td><td class="num">${me().categoryScores[c]}</td><td class="num">${ko().categoryScores[c]}</td></tr>`;if(c===4)h+=`<tr><td>上段ボーナス（${me().upperRaw} / ${ko().upperRaw}）</td><td class="num">${me().bonusAwarded?40:0}</td><td class="num">${ko().bonusAwarded?40:0}</td></tr>`;}
   h+=`<tr><th>合計</th><th class="num">${a}</th><th class="num">${b}</th></tr></table>`;
   $('resTable').innerHTML=h;
   say(a>b?'負けたにゃ……教主、強いにゃ。':a<b?'コミーの勝ちにゃ。次はもっと粘るにゃ。':'引き分けにゃ。','','',a>b?'sad':a<b?'ok':'');
-  $('btnResultAgain').hidden=false;G.resultShown=true;openModal('ovResult');
+  $('btnResultAgain').hidden=false;G.resultShown=true;applyMood();openModal('ovResult');
 }
+
+/* ---------------- title: 気分（怒り）・叩く／なでる ---------------- */
+/* 進行中の試合を捨ててタイトルへ戻る（結果画面の「タイトルへ戻る」と ⟳ の「やり直す」で共用） */
+function backToTitle(){
+  if(G.chatOpen)closeChat();
+  G.gameId++;G.turn=null;G.pending=null;G.busy=false;G.fortune=false;G.fast=false;
+  $('advice').classList.add('hidden');$('scrGame').classList.remove('advice-open');$('btnResultAgain').hidden=true;
+  G.phase='title';G.mood='normal';show('scrTitle');renderTitle();applyMood();$('btnStart').focus();
+}
+function titleFace(){return $('scrTitle').querySelector('.face-title');}
+function renderTitle(){
+  const angry=G.mood==='angry';const s=$('btnStart'),d=$('btnSecond');
+  s.textContent=angry?'ガチ対戦':'はじめる';s.dataset.mode=angry?'serious':'tutor';
+  d.textContent=angry?'はじめる':'ガチ対戦';d.dataset.mode=angry?'tutor':'serious';
+  const f=titleFace();if(f)f.dataset.expr=angry?'angry':'normal';
+}
+/* 怒った見た目：タイトルは気分で、試合と結果はモードで決まる */
+function applyMood(){
+  const angry=(G.phase==='title'&&G.mood==='angry')||((G.phase==='playing'||G.phase==='result')&&G.mode==='serious');
+  if(angry)document.body.dataset.mood='angry';else delete document.body.dataset.mood;
+}
+function hitFace(){
+  G.mood='angry';renderTitle();applyMood();
+  const f=titleFace();if(!f||REDUCED)return;
+  f.classList.remove('squash');void f.offsetWidth;f.classList.add('squash');
+  clearTimeout(f._sq);f._sq=setTimeout(()=>f.classList.remove('squash'),120);
+}
+function petFace(){spawnHearts();G.mood='normal';renderTitle();applyMood();}
+/* ハートは見た目だけの演出なので Math.random を使う（試合の乱数列 G.rng には触れない） */
+function spawnHearts(){
+  const f=titleFace();if(!f)return;const n=5+Math.floor(Math.random()*4);
+  for(let i=0;i<n;i++){
+    const s=document.createElement('span');s.className='heart';s.textContent='♥';s.setAttribute('aria-hidden','true');
+    const left=i%2===0;
+    s.style.left=(left?2+Math.random()*18:80+Math.random()*18)+'%';
+    s.style.top=(30+Math.random()*45)+'%';
+    s.style.fontSize=(8+Math.random()*4).toFixed(1)+'px';
+    s.style.setProperty('--hx',(Math.random()*16-8).toFixed(1)+'px');
+    s.style.setProperty('--hy',(-(40+Math.random()*40)).toFixed(1)+'px');
+    f.appendChild(s);
+    setTimeout(()=>{s.remove();},REDUCED?600:900);
+  }
+}
+/* 叩く（横移動が 10px 以下）となでる（横の累積が顔幅の 25%、最小 40px）。1 押下につき判定は 1 回 */
+function wireTitleFace(){
+  const f=titleFace();if(!f)return;let act=null;
+  f.addEventListener('pointerdown',e=>{act={id:e.pointerId,x:e.clientX,dist:0,done:false};try{f.setPointerCapture(e.pointerId);}catch(err){}});
+  f.addEventListener('pointermove',e=>{
+    if(!act||act.id!==e.pointerId||act.done)return;
+    act.dist+=Math.abs(e.clientX-act.x);act.x=e.clientX;
+    const th=Math.max(40,f.getBoundingClientRect().width*0.25);
+    if(act.dist>=th){act.done=true;petFace();}
+  });
+  f.addEventListener('pointerup',e=>{
+    if(!act||act.id!==e.pointerId)return;const a=act;act=null;
+    try{f.releasePointerCapture(e.pointerId);}catch(err){}
+    if(a.done)return;
+    /* 画面の外で離したときは判定しない */
+    if(e.clientX<0||e.clientY<0||e.clientX>innerWidth||e.clientY>innerHeight)return;
+    if(a.dist<=10)hitFace();
+  });
+  f.addEventListener('pointercancel',()=>{act=null;});
+}
+
+/* ---------------- 勝利の共有 ---------------- */
+function shareText(a){return `${a}点でコミーにヨットで勝ちました\nhttps://takeshisue1108.github.io/torika_yacht_school/\n#トリッカル`;}
+function shareWin(){
+  const text=shareText(me().total);
+  /* タブは同期的に開く（コピーの非同期を待つと遮断するブラウザがある） */
+  try{window.open('https://x.com/intent/post?text='+encodeURIComponent(text),'_blank','noopener');}catch(e){}
+  let pr=null;try{pr=navigator.clipboard&&navigator.clipboard.writeText(text);}catch(e){pr=null;}
+  if(pr&&typeof pr.then==='function')pr.then(()=>toast('クリップボードに点数をコピーしました'),()=>shareFallback(text));
+  else shareFallback(text);
+}
+function shareFallback(text){const b=$('shareBox');b.hidden=false;b.value=text;try{b.focus();b.select();}catch(e){}toast('コピーできませんでした。文を長押しして手動でコピーしてください');}
 
 /* ---------------- modals ---------------- */
 const modalStack=[];
@@ -1558,7 +1643,7 @@ document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',
 const CHAT={loaded:false,loading:false,lines:null,streaming:false,token:0,failed:false};
 const CHAT_PREFACE=["それは単純なようで深遠だにゃ", "それにはマルクスの言葉が効くにゃ", "いい問いだにゃ。資本論に答えがあるにゃ", "ふむ、それは商品の二重性の問題だにゃ", "その悩みは剰余価値で説明できるにゃ", "待ってにゃ、第 1 巻のあの章を思い出すにゃ", "それは使用価値と交換価値の話に聞こえるにゃ", "なるほどにゃ。貨幣の話をしないといけないにゃ", "教主、それは労働時間の問題だにゃ", "コミーの耳がぴくっとしたにゃ。深い話にゃ", "その答えはマンチェスターの工場にあるにゃ", "うーん、それは流通の問題にゃ。話が長くなるにゃ", "それは分業のせいだと思うにゃ", "それについてはエンゲルスも言ってたにゃ", "教主の問いは資本の一般的定式そのものにゃ", "難しいにゃ……でも本に書いてあるにゃ", "それは相対的剰余価値で片づくにゃ", "その話、コミーの好きなところだにゃ", "ちょっと待つにゃ、ページをめくるにゃ", "それはね、労働力という商品の話にゃ", "ふにゃ、深い問いにゃ。順番に話すにゃ", "その気持ち、資本論の序文にも出てくるにゃ", "それは機械と大工業の章の話だにゃ", "一言では言えないにゃ。長くなるにゃ", "それを説明するには価値形態から始めるにゃ", "教主は鋭いにゃ。それは本質的な問いにゃ", "それには 1867 年のマルクスが答えてるにゃ", "その話は労働日の長さに関係あるにゃ", "コミーの尻尾が反応したにゃ。話すにゃ", "それは蓄積の一般法則で見えてくるにゃ", "むずかしいけど、ちゃんと本にあるにゃ", "それは商品の物神性ってやつにゃ", "ふむふむ、協業の章を引くにゃ", "その悩みは本源的蓄積から来てるにゃ", "なるほど、それは資本家の視点にゃ", "教主、それは交換過程の話に聞こえるにゃ", "コミーはそういう話が大好きにゃ", "それは貨幣の流通手段としての機能にゃ", "いい質問にゃ。答えは長い引用になるにゃ", "それは労働の二重性から考えるにゃ", "待つにゃ、いま該当箇所を探してるにゃ", "それは単純な再生産の問題にゃ", "教主の話は、賃金の章を思い出させるにゃ", "それは絶対的剰余価値の話にゃ", "うにゃ、それを考えると眠くなるけど大事にゃ", "それはね、マニュファクチュアの時代の話にゃ", "その問いは価値の実体に触れているにゃ", "それは資本の回転と関係あるかもにゃ", "ふむ、それは労働過程と価値増殖過程の話にゃ", "深い……深いにゃ。マルクスに聞くにゃ"];
 function openChat(opener){if(G.phase==='loading')return;G.chatOpen=true;openModal('ovChat',opener);$('chatText').focus();if(!CHAT.loaded&&!CHAT.loading)loadCorpus();updateChatUi();}
-function closeChat(){chatStop();G.chatOpen=false;closeModal('ovChat');setExpr('normal');$('chatLog').textContent='';$('chatText').value='';document.querySelectorAll('#chatTopics input').forEach(r=>r.checked=false);updateChatUi();}
+function closeChat(){chatStop();G.chatOpen=false;closeModal('ovChat');setExpr(baseExpr());$('chatLog').textContent='';$('chatText').value='';document.querySelectorAll('#chatTopics input').forEach(r=>r.checked=false);updateChatUi();}
 function chatMsg(kind,text){const log=$('chatLog');const d=document.createElement('div');d.className='msg '+kind;d.textContent=text;log.appendChild(d);trimLog();log.scrollTop=log.scrollHeight;return d;}
 const CHAT_KEEP=5; // 表示は最新 5 件だけ残す（利用者の指示）。読み上げ位置は pos で別管理
 function trimLog(){const log=$('chatLog');while(log.children.length>CHAT_KEEP)log.removeChild(log.firstChild);}
@@ -1604,7 +1689,7 @@ async function chatSend(){
     await sleep(rint(G.rng.chat,300,700));
   }
 }
-function chatStop(){if(!CHAT.streaming)return;CHAT.token++;CHAT.streaming=false;updateChatUi();setExpr('normal');}
+function chatStop(){if(!CHAT.streaming)return;CHAT.token++;CHAT.streaming=false;updateChatUi();setExpr(baseExpr());}
 
 /* ---------------- wiring ---------------- */
 function show(id){for(const s of['scrLoading','scrError','scrTitle','scrGame'])$(s).classList.toggle('hidden',s!==id);}
@@ -1614,15 +1699,20 @@ document.addEventListener('click',e=>{const q=e.target.closest('[data-q="B"]');i
 $('btnRoll').addEventListener('click',userRoll);
 document.addEventListener('click',e=>{if(e.target.closest('#btnRegister'))userRegister();});
 document.addEventListener('click',e=>{if(e.target.closest('#btnFortune'))toggleFortune();});
+$('bubbleSp').querySelector('.l2').addEventListener('click',toggleReason);$('bubbleSp').querySelector('.l2hint').addEventListener('click',toggleReason);
+$('bubbleSp').querySelector('.l2').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleReason();}});
 $('btnFast').addEventListener('click',()=>{G.fast=!G.fast;skipFlag=true;renderControls();});
-$('btnStart').addEventListener('click',()=>newMatch(debugSeed()));
+/* 主ボタン・副ボタンは文言どおりのモードで始める（気分で入れ替わる） */
+for(const id of['btnStart','btnSecond'])$(id).addEventListener('click',e=>newMatch(debugSeed(),e.currentTarget.dataset.mode||'tutor'));
+wireTitleFace();
 $('btnAgain').addEventListener('click',()=>{closeModal('ovResult');newMatch(null);});
 $('btnViewBoard').addEventListener('click',()=>closeModal('ovResult'));
+$('btnShare').addEventListener('click',shareWin);
+$('btnTitle').addEventListener('click',()=>{closeModal('ovResult');backToTitle();});
 $('btnResultAgain').addEventListener('click',()=>{if(G.phase==='result')openModal('ovResult');});
 $('btnHowto').addEventListener('click',()=>openModal('ovHowto'));$('btnHowto2').addEventListener('click',()=>openModal('ovHowto'));
-$('btnPoints').addEventListener('click',()=>openModal('ovPoints'));
 $('btnRestart').addEventListener('click',()=>openModal('ovConfirm'));
-$('btnConfirmYes').addEventListener('click',()=>{closeModal('ovConfirm');newMatch(null);});
+$('btnConfirmYes').addEventListener('click',()=>{closeModal('ovConfirm');backToTitle();});
 function openChatFx(opener){
   if(G.phase==='loading')return;
   const b=$('bubbleSp');const face=$('portraitSp').querySelector('.face');
@@ -1668,14 +1758,14 @@ function boot(){
         if(!(Math.abs(root-150.530140109)<1e-6))return fail(new Error('方策データの検算に失敗しました（期待値 '+root+'）'));
         STRAT=new TD.Strategy(M,V);G.phase='title';
         console.info(`strategy ${TD.STRATEGY_ID} rules ${TD.RULES_ID} EV ${root.toFixed(6)} solved in ${((performance.now()-t0)/1000).toFixed(1)}s`);
-        show('scrTitle');$('btnStart').focus();return;}
+        renderTitle();applyMood();show('scrTitle');$('btnStart').focus();return;}
       $('loadBar').style.width=(100*r.value)+'%';$('loadMsg').textContent=`コミーが最善手の表を作っています… ${Math.round(100*r.value)}%`;
       setTimeout(step,0);
     })();
   }catch(err){fail(err);}
   function fail(err){G.phase='error';$('errMsg').textContent='戦略データを準備できませんでした。'+(err&&err.message?'（'+err.message+'）':'');show('scrError');}
 }
-window.__TDT={G,get STRAT(){return STRAT;},newMatch,userRoll,userRegister,toggleHeld,gradeKeep,gradeCategory,openChat,chatSend,chatStop,closeChat,CHAT,handScores,heldFromAction,toggleFortune,canFortune,setSel:c=>{G.selCat=c;renderAll();}};
+window.__TDT={G,get STRAT(){return STRAT;},newMatch,userRoll,userRegister,toggleHeld,gradeKeep,gradeCategory,openChat,chatSend,chatStop,closeChat,CHAT,handScores,heldFromAction,toggleFortune,canFortune,toggleReason,backToTitle,hitFace,petFace,renderTitle,applyMood,shareText,shareWin,showResult,setSel:c=>{G.selCat=c;renderAll();}};
 boot();
 })();
 
