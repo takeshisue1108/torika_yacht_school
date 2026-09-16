@@ -310,6 +310,12 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
 .chat .msg.user{align-self:flex-end;background:var(--brown);color:#fff;border-bottom-right-radius:4px}
 .chat .msg.kommy{align-self:flex-start;background:#fff;border:1px solid var(--pink2);border-bottom-left-radius:4px}
 .chat .msg.sys{align-self:center;background:transparent;color:var(--muted);font-size:.85rem}
+/* 盤面のコミー列 .kommy（flex 縦・中央寄せ）が .msg.kommy にも当たるので、チップと 2 行を持つ吹き出しは通常のブロックに戻す */
+.chat .msg.kommy.advice{display:block}
+.chat .msg.kommy.advice.warn{background:var(--warn-bg);border-color:var(--warn)}
+.chat .msg.kommy.advice.ok{border-color:var(--ok)}
+.chat .msg.kommy.advice .chip{display:inline-block;font-size:.75rem;font-weight:700;padding:1px 8px;border-radius:999px;background:var(--pink);color:var(--brown);margin:2px 0}
+.chat .msg.kommy.advice .l2{color:var(--muted);font-size:.9rem;margin-top:2px}
 .chat .dots span{display:inline-block;width:8px;height:8px;border-radius:50%;background:#b58a8a;margin:0 2px;animation:blink 1.2s infinite}
 .chat .dots span:nth-child(2){animation-delay:.2s}.chat .dots span:nth-child(3){animation-delay:.4s}
 @keyframes blink{0%,80%,100%{opacity:.25}40%{opacity:1}}
@@ -797,7 +803,7 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
 
 <div class="fanfare" id="fanfare" aria-hidden="true"></div>
 <div class="toast" id="toast" role="status"></div>
-<script>window.BUILD_INFO={"builtAt": "2026-09-15T22:51:23+0900", "strategySha256": "275835a3289eeee6", "corpusLines": 11322};</script>
+<script>window.BUILD_INFO={"builtAt": "2026-09-16T10:14:35+0900", "strategySha256": "275835a3289eeee6", "corpusLines": 11322};</script>
 <script>
 /* Trick Dice (JP Season 1) — rules, exact expected-score DP, HYBRID_REPORT_V1 policy, grading, reason codes.
    Works in Node (module.exports) and in the browser (window.TD). No dependencies. */
@@ -1180,7 +1186,7 @@ const rrange=(rng,lo,hi)=>lo+rng()*(hi-lo);
 
 /* ---------------- state ---------------- */
 let M=null,V=null,STRAT=null;
-const G={schemaVersion:1,rulesId:TD.RULES_ID,strategyId:TD.STRATEGY_ID,matchSeed:'',phase:'loading',active:'user',round:1,players:null,turn:null,stats:null,rng:null,first:'user',fast:false,chatOpen:false,lastPraise:-1,busy:false,pending:null,resultShown:false,gameId:0,fortune:false,mode:'tutor',mood:'normal'};
+const G={schemaVersion:1,rulesId:TD.RULES_ID,strategyId:TD.STRATEGY_ID,matchSeed:'',phase:'loading',active:'user',round:1,players:null,turn:null,stats:null,rng:null,first:'user',fast:false,chatOpen:false,lastPraise:-1,busy:false,pending:null,resultShown:false,gameId:0,fortune:false,mode:'tutor',mood:'normal',adviceLog:[]};
 function newPlayer(){return{availableMask:255,categoryScores:[null,null,null,null,null,null,null,null],upperRaw:0,bonusAwarded:false,total:0};}
 function recompute(p){let sum=0,up=0;for(let c=0;c<8;c++){const v=p.categoryScores[c];if(v!=null){sum+=v;if(c<5)up+=v;}}p.upperRaw=up;p.bonusAwarded=up>=55;p.total=sum+(p.bonusAwarded?40:0);
   let mask=0;for(let c=0;c<8;c++)if(p.categoryScores[c]==null)mask|=1<<c;p.availableMask=mask;
@@ -1215,11 +1221,27 @@ function fanfare(sc){let msg=null;if(sc[7]===70)msg='ボーナスヨット！';e
 function faceLabel(i){const t=G.turn;if(i===4)return t.green===1?'W':String(t.green);return String(t.redFaces[i]);}
 function keptPhrase(keep,keepGreen){const parts=[];for(let f=1;f<=6;f++)for(let k=0;k<keep[f-1];k++)parts.push(String(f));if(keepGreen)parts.push(G.turn.green===1?'W':String(G.turn.green));return parts.join('・');}
 
+/* ---------------- アドバイスの記録（20.11） ---------------- */
+/* コミーが吹き出しに出した台詞を試合ごとに溜め、チャットで読み返せるようにする。利用者の入力は入れない（9.2） */
+const ADVICE_MAX=200,ADVICE_KEY='tdt.adviceLog.v1';
+function saveAdviceLog(){try{localStorage.setItem(ADVICE_KEY,JSON.stringify({schemaVersion:1,matchSeed:G.matchSeed,mode:G.mode,entries:G.adviceLog}));}catch(e){}}
+/* 試合の復元（11.6）が実装されるまで読み戻しは行わない（復元先がないため loadAdviceLog は作らない） */
+function clearAdviceLog(){G.adviceLog=[];try{localStorage.removeItem(ADVICE_KEY);}catch(e){}saveAdviceLog();}
+function logAdvice(kind,l1,l2,chip,tone,extra){
+  if(!kind||kind==='none')return null;
+  const L=G.adviceLog;const prev=L.length?L[L.length-1]:null;
+  /* 原則だけ → 原則＋理由 の 2 回の say を 1 件にまとめる */
+  if(kind==='reason'&&prev&&prev.kind==='principle'&&prev.l1===(l1||'')&&prev.chip===(chip||'')){prev.l2=l2||'';prev.kind='reason';saveAdviceLog();return prev;}
+  const e={round:G.round,who:G.active,kind:kind,chip:chip||'',l1:l1||'',l2:l2||'',tone:tone||''};
+  if(extra&&typeof extra==='object')for(const k of Object.keys(extra))e[k]=extra[k];
+  L.push(e);while(L.length>ADVICE_MAX)L.shift();saveAdviceLog();return e;
+}
+
 /* ---------------- speech ---------------- */
 function setExpr(name){document.querySelectorAll('#scrGame .face').forEach(f=>f.dataset.expr=name);}
 /* 既定の表情。ガチ対戦の試合中と結果では怒り顔に戻す（tone つきの happy/oops/sad とチャットの think/talk が優先） */
 function baseExpr(){if(G.mode==='serious'&&(G.phase==='playing'||G.phase==='result'))return'angry';return G.active==='kommy'&&G.phase==='playing'?'think':'normal';}
-function say(l1,l2,chip,tone){setExpr(tone==='ok'?'happy':tone==='warn'?'oops':tone==='sad'?'sad':baseExpr());for(const id of['bubbleSp']){const b=$(id);b.classList.remove('ok','warn');if(tone)b.classList.add(tone);
+function say(l1,l2,chip,tone,kind,extra){logAdvice(kind===undefined?'info':kind,l1,l2,chip,tone,extra);setExpr(tone==='ok'?'happy':tone==='warn'?'oops':tone==='sad'?'sad':baseExpr());for(const id of['bubbleSp']){const b=$(id);b.classList.remove('ok','warn');if(tone)b.classList.add(tone);
   const cw=b.querySelector('.chipwrap');cw.textContent='';if(chip){const s=document.createElement('span');s.className='chip';s.textContent=chip;cw.appendChild(s);}
   b.querySelector('.l1').textContent=l1||'';const e2=b.querySelector('.l2');e2.textContent=l2||'';e2.classList.remove('open');e2.setAttribute('aria-expanded','false');}}
 function toggleReason(){const e2=$('bubbleSp').querySelector('.l2');if(!e2.textContent)return;const open=e2.classList.toggle('open');e2.setAttribute('aria-expanded',String(open));}
@@ -1311,9 +1333,10 @@ function newMatch(seed,mode){
   G.rng={dice:makeRng(G.matchSeed,'dice'),pres:makeRng(G.matchSeed,'presentation'),chat:makeRng(G.matchSeed,'chat')};
   G.players={user:newPlayer(),kommy:newPlayer()};G.round=1;G.stats={decisions:0,correct:0,advised:0};G.phase='playing';G.fast=false;G.pending=null;G.busy=false;G.resultShown=false;G.selCat=null;G.koSel=null;G.fortune=false;
   G.first=G.rng.dice()<0.5?'user':'kommy';G.active=G.first;
+  clearAdviceLog();
   $('btnResultAgain').hidden=true;$('advice').classList.add('hidden');$('scrGame').classList.remove('advice-open');
   show('scrGame');G.mood='normal';applyMood();
-  say(G.first==='user'?'あなたが先手にゃ。':'コミーが先手にゃ。','', '', '');
+  say(G.first==='user'?'あなたが先手にゃ。':'コミーが先手にゃ。','', '', '','info');
   toast(G.first==='user'?'あなたが先手':'コミーが先手');
   G.turn=null;renderAll();
   const gid=G.gameId;setTimeout(()=>{if(gid===G.gameId&&G.phase==='playing')startTurn();},1000);
@@ -1321,7 +1344,7 @@ function newMatch(seed,mode){
 function startTurn(){
   G.turn={rollNumber:0,redFaces:[1,1,1,1],green:1,held:[false,false,false,false,false],pendingAdvice:null};G.selCat=null;G.koSel=null;G.pending=null;G.busy=false;G.fortune=false;
   $('advice').classList.add('hidden');$('scrGame').classList.remove('advice-open');
-  if(G.active==='user'){say('さあ、どうするにゃ？','','','');renderAll();$('btnRoll').focus();}
+  if(G.active==='user'){say('さあ、どうするにゃ？','','','','turn');renderAll();$('btnRoll').focus();}
   else{renderAll();kommyTurn();}
 }
 function drawRoll(){ // results fixed before animation
@@ -1440,7 +1463,7 @@ async function userRoll(){
   /* ガチ対戦は採点しない */
   if(G.mode==='serious'){await doRoll();return;}
   const g=gradeKeep(t.held);G.stats.decisions++;
-  if(g.correct){G.stats.correct++;say(pickPraise(PRAISE),'',composeKeep(g.reasons[0],g.facts,'').chip,'ok');await doRoll();return;}
+  if(g.correct){G.stats.correct++;say(pickPraise(PRAISE),'',composeKeep(g.reasons[0],g.facts,'').chip,'ok','praise');await doRoll();return;}
   showAdvice({type:'keep',g,onFix:async()=>{t.held=g.recHeld.slice();renderAll();await doRoll();},onKeep:async()=>{await doRoll();}});
 }
 async function userRegister(){
@@ -1458,7 +1481,7 @@ async function userRegister(){
 async function registerFlow(cat,praiseOk){
   const p=me();if(TD.popcount(p.availableMask)===1){await registerAndAdvance(cat);return;} // no choice: not graded
   const g=gradeCategory(cat);G.stats.decisions++;
-  if(g.correct){G.stats.correct++;if(praiseOk)say(pickPraise(PRAISE_CAT),'',composeCat(g.reasons[0],g.facts,'').chip,'ok');await registerAndAdvance(cat);return;}
+  if(g.correct){G.stats.correct++;if(praiseOk)say(pickPraise(PRAISE_CAT),'',composeCat(g.reasons[0],g.facts,'').chip,'ok','praise');await registerAndAdvance(cat);return;}
   showAdvice({type:'category',g,cat,onFix:async()=>{await registerAndAdvance(g.rec.cat);},onKeep:async()=>{await registerAndAdvance(cat);}});
 }
 function showAdvice(opt){
@@ -1467,7 +1490,7 @@ function showAdvice(opt){
   const rl=reasonLines(g.reasons,ph.stem,opt.type==='keep',g.facts);
   const l1=`こういうときは ${ph.full}にゃ`;
   G.pending={type:opt.type,rec:g.rec,recHeld:g.recHeld,cat:opt.cat};
-  say(l1,rl.reason,rl.chip,'warn');
+  say(l1,rl.reason,rl.chip,'warn','advice');
   const el=$('advice');el.classList.remove('hidden','ok');el.innerHTML='';$('scrGame').classList.add('advice-open');
   const chip=document.createElement('span');chip.className='chip';chip.textContent=rl.chip;el.appendChild(chip);
   const p1=document.createElement('p');p1.innerHTML='<b>原則：</b>';p1.appendChild(document.createTextNode(l1));el.appendChild(p1);
@@ -1477,15 +1500,15 @@ function showAdvice(opt){
   const b1=document.createElement('button');b1.className='btn-ok';b1.textContent='おすすめに直す';
   const b2=document.createElement('button');b2.className='btn-warn';b2.textContent='このまま進む';
   acts.appendChild(b1);acts.appendChild(b2);el.appendChild(acts);
-  b1.addEventListener('click',async()=>{if(!G.pending)return;G.pending=null;el.classList.add('hidden');$('scrGame').classList.remove('advice-open');say('それでいいにゃ。','','','ok');await opt.onFix();});
-  b2.addEventListener('click',async()=>{if(!G.pending)return;G.pending=null;el.classList.add('hidden');$('scrGame').classList.remove('advice-open');say('わかったにゃ、教主の手で進めるにゃ。','','','');await opt.onKeep();});
+  b1.addEventListener('click',async()=>{if(!G.pending)return;G.pending=null;el.classList.add('hidden');$('scrGame').classList.remove('advice-open');say('それでいいにゃ。','','','ok','none');logAdvice('choice','→ おすすめに直した');await opt.onFix();});
+  b2.addEventListener('click',async()=>{if(!G.pending)return;G.pending=null;el.classList.add('hidden');$('scrGame').classList.remove('advice-open');say('わかったにゃ、教主の手で進めるにゃ。','','','','none');logAdvice('choice','→ このまま進んだ');await opt.onKeep();});
   renderAll();b1.focus();
 }
 
 /* ---------------- kommy turn ---------------- */
 async function kommyTurn(){
   const gid=G.gameId;const p=ko(),o=me();const quiet=G.mode==='serious';
-  say('コミーの番にゃ。','','','');
+  say('コミーの番にゃ。','','','','turn');
   await wait(rint(G.rng.pres,500,900));if(gid!==G.gameId)return;
   if(!await doRoll())return;
   while(gid===G.gameId&&G.phase==='playing'){
@@ -1499,10 +1522,10 @@ async function kommyTurn(){
         const kctx={own:stateOf(p),opp:stateOf(o),green:t.green,rec:keepRec,scores:handScores(),remaining:ev.remaining,rerollsLeft:rl,evalResult:ev,scoresCard:p.categoryScores};
         const reasons=TD.keepReasons(kctx);const facts=TD.keepFacts(kctx);
         const ph=keepActionPhrase(keepRec);const rlns=reasonLines(reasons,ph.stem,true,facts);
-        say(`こういうときは ${ph.full}にゃ`,'',rlns.chip,'');
+        say(`こういうときは ${ph.full}にゃ`,'',rlns.chip,'','principle');
         await wait(rint(G.rng.pres,700,1200));if(gid!==G.gameId)return;
         t.held=heldFromAction(keepRec);renderAll();
-        say(`こういうときは ${ph.full}にゃ`,rlns.reason,rlns.chip,'');
+        say(`こういうときは ${ph.full}にゃ`,rlns.reason,rlns.chip,'','reason');
         await wait(holdTime(rlns.reason));if(gid!==G.gameId)return;
         if(!await doRoll())return;continue;
       }
@@ -1511,16 +1534,16 @@ async function kommyTurn(){
     const ev=STRAT.evaluateCategory(stateOf(p),stateOf(o),redCounts(),t.green);const rec=ev.recommended;
     /* ガチ対戦：結果だけを言う */
     if(quiet){G.koSel=rec.cat;renderAll();await wait(rint(G.rng.pres,500,900));if(gid!==G.gameId)return;
-      const pts=handScores()[rec.cat];say(`${CAT_SPEECH[rec.cat]}に ${pts} 点にゃ`,'','','');
+      const pts=handScores()[rec.cat];say(`${CAT_SPEECH[rec.cat]}に ${pts} 点にゃ`,'','','','register');
       await registerAndAdvance(rec.cat);return;}
     const cctx={own:stateOf(p),opp:stateOf(o),evalResult:ev,rec,scores:handScores(),remaining:ev.remaining,scoresCard:p.categoryScores};
     const reasons=TD.categoryReasons(cctx);const facts=TD.catFacts(cctx);
     const ph=catActionPhrase(rec.cat,rec.points);const rlns=reasonLines(reasons,ph.stem,false,facts);
     const pre=(keepRec&&keepRec.nKept===5&&rl>0)?'この形はもう振らないにゃ。':'';
-    say(`${pre}こういうときは ${ph.full}にゃ`,'',rlns.chip,'');
+    say(`${pre}こういうときは ${ph.full}にゃ`,'',rlns.chip,'','principle');
     await wait(rint(G.rng.pres,700,1200));if(gid!==G.gameId)return;
     G.koSel=rec.cat;renderAll();
-    say(`${pre}こういうときは ${ph.full}にゃ`,rlns.reason,rlns.chip,'');
+    say(`${pre}こういうときは ${ph.full}にゃ`,rlns.reason,rlns.chip,'','reason');
     await wait(holdTime(rlns.reason));if(gid!==G.gameId)return;
     await registerAndAdvance(rec.cat);return;
   }
@@ -1539,7 +1562,7 @@ function showResult(){
   for(let c=0;c<8;c++){h+=`<tr><td>${CAT_LABEL[c]}</td><td class="num">${me().categoryScores[c]}</td><td class="num">${ko().categoryScores[c]}</td></tr>`;if(c===4)h+=`<tr><td>上段ボーナス（${me().upperRaw} / ${ko().upperRaw}）</td><td class="num">${me().bonusAwarded?40:0}</td><td class="num">${ko().bonusAwarded?40:0}</td></tr>`;}
   h+=`<tr><th>合計</th><th class="num">${a}</th><th class="num">${b}</th></tr></table>`;
   $('resTable').innerHTML=h;
-  say(a>b?'負けたにゃ……教主、強いにゃ。':a<b?'コミーの勝ちにゃ。次はもっと粘るにゃ。':'引き分けにゃ。','','',a>b?'sad':a<b?'ok':'');
+  say(a>b?'負けたにゃ……教主、強いにゃ。':a<b?'コミーの勝ちにゃ。次はもっと粘るにゃ。':'引き分けにゃ。','','',a>b?'sad':a<b?'ok':'','result',{me:a,ko:b});
   $('btnResultAgain').hidden=false;G.resultShown=true;applyMood();openModal('ovResult');
 }
 
@@ -1547,6 +1570,7 @@ function showResult(){
 /* 進行中の試合を捨ててタイトルへ戻る（結果画面の「タイトルへ戻る」と ⟳ の「やり直す」で共用） */
 function backToTitle(){
   if(G.chatOpen)closeChat();
+  clearAdviceLog();
   G.gameId++;G.turn=null;G.pending=null;G.busy=false;G.fortune=false;G.fast=false;
   $('advice').classList.add('hidden');$('scrGame').classList.remove('advice-open');$('btnResultAgain').hidden=true;
   G.phase='title';G.mood='normal';show('scrTitle');renderTitle();applyMood();$('btnStart').focus();
@@ -1642,8 +1666,26 @@ document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',
 /* ---------------- chat ---------------- */
 const CHAT={loaded:false,loading:false,lines:null,streaming:false,token:0,failed:false};
 const CHAT_PREFACE=["それは単純なようで深遠だにゃ", "それにはマルクスの言葉が効くにゃ", "いい問いだにゃ。資本論に答えがあるにゃ", "ふむ、それは商品の二重性の問題だにゃ", "その悩みは剰余価値で説明できるにゃ", "待ってにゃ、第 1 巻のあの章を思い出すにゃ", "それは使用価値と交換価値の話に聞こえるにゃ", "なるほどにゃ。貨幣の話をしないといけないにゃ", "教主、それは労働時間の問題だにゃ", "コミーの耳がぴくっとしたにゃ。深い話にゃ", "その答えはマンチェスターの工場にあるにゃ", "うーん、それは流通の問題にゃ。話が長くなるにゃ", "それは分業のせいだと思うにゃ", "それについてはエンゲルスも言ってたにゃ", "教主の問いは資本の一般的定式そのものにゃ", "難しいにゃ……でも本に書いてあるにゃ", "それは相対的剰余価値で片づくにゃ", "その話、コミーの好きなところだにゃ", "ちょっと待つにゃ、ページをめくるにゃ", "それはね、労働力という商品の話にゃ", "ふにゃ、深い問いにゃ。順番に話すにゃ", "その気持ち、資本論の序文にも出てくるにゃ", "それは機械と大工業の章の話だにゃ", "一言では言えないにゃ。長くなるにゃ", "それを説明するには価値形態から始めるにゃ", "教主は鋭いにゃ。それは本質的な問いにゃ", "それには 1867 年のマルクスが答えてるにゃ", "その話は労働日の長さに関係あるにゃ", "コミーの尻尾が反応したにゃ。話すにゃ", "それは蓄積の一般法則で見えてくるにゃ", "むずかしいけど、ちゃんと本にあるにゃ", "それは商品の物神性ってやつにゃ", "ふむふむ、協業の章を引くにゃ", "その悩みは本源的蓄積から来てるにゃ", "なるほど、それは資本家の視点にゃ", "教主、それは交換過程の話に聞こえるにゃ", "コミーはそういう話が大好きにゃ", "それは貨幣の流通手段としての機能にゃ", "いい質問にゃ。答えは長い引用になるにゃ", "それは労働の二重性から考えるにゃ", "待つにゃ、いま該当箇所を探してるにゃ", "それは単純な再生産の問題にゃ", "教主の話は、賃金の章を思い出させるにゃ", "それは絶対的剰余価値の話にゃ", "うにゃ、それを考えると眠くなるけど大事にゃ", "それはね、マニュファクチュアの時代の話にゃ", "その問いは価値の実体に触れているにゃ", "それは資本の回転と関係あるかもにゃ", "ふむ、それは労働過程と価値増殖過程の話にゃ", "深い……深いにゃ。マルクスに聞くにゃ"];
-function openChat(opener){if(G.phase==='loading')return;G.chatOpen=true;openModal('ovChat',opener);$('chatText').focus();if(!CHAT.loaded&&!CHAT.loading)loadCorpus();updateChatUi();}
+function openChat(opener){if(G.phase==='loading')return;G.chatOpen=true;openModal('ovChat',opener);renderAdviceLog();$('chatText').focus();if(!CHAT.loaded&&!CHAT.loading)loadCorpus();updateChatUi();}
 function closeChat(){chatStop();G.chatOpen=false;closeModal('ovChat');setExpr(baseExpr());$('chatLog').textContent='';$('chatText').value='';document.querySelectorAll('#chatTopics input').forEach(r=>r.checked=false);updateChatUi();}
+/* 記録を先頭から全件描く。表示上限 5 件（trimLog）は話しかけたあとのストリームにだけ働く（20.11） */
+function renderAdviceLog(){
+  const log=$('chatLog');log.setAttribute('aria-live','off');log.textContent='';
+  const L=G.adviceLog;
+  const sys=t=>{const d=document.createElement('div');d.className='msg sys';d.textContent=t;log.appendChild(d);return d;};
+  if(!L.length)sys('まだアドバイスはないにゃ');
+  for(const e of L){
+    if(e.kind==='turn'){sys(`第 ${e.round} ラウンド・${e.who==='kommy'?'コミー':'あなた'}の手番`);continue;}
+    if(e.kind==='choice'||e.kind==='info'){sys(e.l1);continue;}
+    if(e.kind==='result')sys(`試合終了：あなた ${e.me==null?0:e.me} 点、コミー ${e.ko==null?0:e.ko} 点`);
+    const d=document.createElement('div');d.className='msg kommy advice'+(e.tone==='warn'?' warn':e.tone==='ok'?' ok':'');
+    if(e.chip){const c=document.createElement('span');c.className='chip';c.textContent=e.chip;d.appendChild(c);}
+    const a=document.createElement('div');a.className='l1';a.textContent=e.l1;d.appendChild(a);
+    if(e.l2){const b=document.createElement('div');b.className='l2';b.textContent=e.l2;d.appendChild(b);}
+    log.appendChild(d);
+  }
+  log.scrollTop=log.scrollHeight;log.setAttribute('aria-live','polite');
+}
 function chatMsg(kind,text){const log=$('chatLog');const d=document.createElement('div');d.className='msg '+kind;d.textContent=text;log.appendChild(d);trimLog();log.scrollTop=log.scrollHeight;return d;}
 const CHAT_KEEP=5; // 表示は最新 5 件だけ残す（利用者の指示）。読み上げ位置は pos で別管理
 function trimLog(){const log=$('chatLog');while(log.children.length>CHAT_KEEP)log.removeChild(log.firstChild);}
@@ -1765,7 +1807,7 @@ function boot(){
   }catch(err){fail(err);}
   function fail(err){G.phase='error';$('errMsg').textContent='戦略データを準備できませんでした。'+(err&&err.message?'（'+err.message+'）':'');show('scrError');}
 }
-window.__TDT={G,get STRAT(){return STRAT;},newMatch,userRoll,userRegister,toggleHeld,gradeKeep,gradeCategory,openChat,chatSend,chatStop,closeChat,CHAT,handScores,heldFromAction,toggleFortune,canFortune,toggleReason,backToTitle,hitFace,petFace,renderTitle,applyMood,shareText,shareWin,showResult,setSel:c=>{G.selCat=c;renderAll();}};
+window.__TDT={G,get STRAT(){return STRAT;},get adviceLog(){return G.adviceLog;},logAdvice,renderAdviceLog,newMatch,userRoll,userRegister,toggleHeld,gradeKeep,gradeCategory,openChat,chatSend,chatStop,closeChat,CHAT,handScores,heldFromAction,toggleFortune,canFortune,toggleReason,backToTitle,hitFace,petFace,renderTitle,applyMood,shareText,shareWin,showResult,setSel:c=>{G.selCat=c;renderAll();}};
 boot();
 })();
 
