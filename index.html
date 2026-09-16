@@ -114,6 +114,7 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
 .scorecard td.v .cand.rec{box-shadow:0 0 0 3px #ffd766}
 .scorecard td.v .cand.kommy{cursor:default;border-style:dotted}
 .scorecard td.v .cand.kommy[aria-pressed="true"]{border:2px solid var(--ok);background:var(--ok-bg);color:var(--ink);font-weight:800}
+.scorecard td.v .cand .breakdown{display:block;font-size:.58rem;line-height:1.05;font-weight:600;color:var(--muted);white-space:nowrap}
 .scorecard td.v.done{font-weight:800}
 .scorecard td.v.done.zero{color:#b26a6a;font-weight:600}
 .scorecard tr.sec td{background:#f6ebe9;color:var(--brown);font-size:.72rem;font-weight:700;height:20px;padding:0 6px;letter-spacing:.04em}
@@ -231,6 +232,9 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
 .advice{padding:8px 10px;font-size:.92rem}
 .roundline{flex-wrap:wrap;gap:4px 8px;font-size:.9rem}
 .roundline .menu{margin-left:auto;display:flex;gap:4px}
+.roundline .kommy-quiet{display:inline-flex;align-items:center;gap:4px;min-height:30px;font-size:.72rem;font-weight:700;color:var(--muted);white-space:nowrap;cursor:pointer}
+.roundline .kommy-quiet input{width:18px;height:18px;margin:0;accent-color:var(--brown)}
+.roundline .kommy-quiet-short{display:none}
 .roundline .menu .btn-small{min-width:34px;min-height:30px;padding:0 8px;font-size:.85rem}
 @media (min-width:600px){
   body{background:#efe3df}
@@ -258,6 +262,13 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
   .center{grid-column:2;grid-row:1;gap:4px}
   .board{padding:6px;gap:4px;justify-content:flex-start}
   .roundline{font-size:.85rem}
+  .roundline .rolls{font-size:.72rem}
+  .roundline .menu{gap:2px}
+  .roundline .kommy-quiet{gap:1px;font-size:.58rem;min-height:28px}
+  .roundline .kommy-quiet input{width:14px;height:14px}
+  .roundline .kommy-quiet-full{display:none}
+  .roundline .kommy-quiet-short{display:inline}
+  .roundline .menu .btn-small{min-width:26px;min-height:28px;padding:0 4px}
   .hintline{display:none}
   .dice{padding:4px}
   .die{--sz:min(46px,9vw)}
@@ -318,6 +329,12 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
 .chat .msg.kommy.advice.ok{border-color:var(--ok)}
 .chat .msg.kommy.advice .chip{display:inline-block;font-size:.75rem;font-weight:700;padding:1px 8px;border-radius:999px;background:var(--pink);color:var(--brown);margin:2px 0}
 .chat .msg.kommy.advice .l2{color:var(--muted);font-size:.9rem;margin-top:2px}
+.chat .turn-context{margin:0 0 6px;padding:0 0 7px;border-bottom:1px solid var(--line)}
+.chat .turn-label{font-size:.75rem;font-weight:800;color:var(--muted);line-height:1.2;margin-bottom:5px}
+.chat .history-dice{justify-content:flex-start;gap:6px;padding:7px 6px 4px;border-radius:10px}
+.chat .history-dice .die{--sz:32px;flex:none;pointer-events:none;transition:none}
+.chat .history-dice .die.history-held{transform:translateY(-3px);outline:2px solid #e2a400;outline-offset:1px}
+.chat .history-dice .dlabel{min-height:12px;font-size:.58rem;line-height:12px}
 .chat .dots span{display:inline-block;width:8px;height:8px;border-radius:50%;background:#b58a8a;margin:0 2px;animation:blink 1.2s infinite}
 .chat .dots span:nth-child(2){animation-delay:.2s}.chat .dots span:nth-child(3){animation-delay:.4s}
 @keyframes blink{0%,80%,100%{opacity:.25}40%{opacity:1}}
@@ -367,7 +384,7 @@ button:focus-visible,[tabindex]:focus-visible,a:focus-visible,textarea:focus-vis
 <noscript><div style="padding:20px;font-family:sans-serif">このゲームの実行には JavaScript が必要です。ブラウザの JavaScript を有効にしてください。</div></noscript>
 <!-- 画面 4 枚と窓 4 枚とトースト・ファンファーレは views/App.js が描く（boot() が 1 回だけ mount する） -->
 <div id="app"></div>
-<script>window.BUILD_INFO={"builtAt": "2026-09-16T21:03:24+0900", "strategySha256": "275835a3289eeee6", "corpusLines": 11322};</script>
+<script>window.BUILD_INFO={"builtAt": "2026-09-17T07:43:49+0900", "strategySha256": "b4aad1bf3b5b0fed", "corpusLines": 11322};</script>
 <script>
 
 /* ==== js/vendor/vue.global.prod.js ==== */
@@ -511,12 +528,57 @@ function meanOf(d){let s=0;for(let i=0;i<d.length;i++)s+=i*d[i];return s;}
 
 /* ---------------- Strategy ---------------- */
 class Strategy{
-  constructor(m,V){this.m=m;this.V=V;this._ev=new Map();this._dist=new Map();this._last=new Map();}
+  constructor(m,V){this.m=m;this.V=V;this._ev=new Map();this._dist=new Map();this._last=new Map();this._bonus=new Map();}
   analyzeEV(mask,s){
     const key=mask*64+s;let a=this._ev.get(key);if(a)return a;
     const m=this.m,H=m.H;const base=new Float64Array(H),one=new Float64Array(H),two=new Float64Array(H);const sp=new Int8Array(H),p1=new Int16Array(H),p2=new Int16Array(H);
     baseValues(m,this.V,mask,s,base,sp);rerollOp(m,base,one,p1);rerollOp(m,one,two,p2);
     a={base,one,two,scorePol:sp,keepPol1:p1,keepPol2:p2};this._ev.set(key,a);return a;
+  }
+  bonusProbability(mask,s){
+    if(s>=55)return 1;
+    let maximum=s;
+    for(let c=0;c<5;c++)if(mask&(1<<c))maximum+=5*UPPER_FACES[c];
+    if(mask===0||maximum<55)return 0;
+    const key=mask*64+s;let cached=this._bonus.get(key);if(cached!=null)return cached;
+    const m=this.m,a=this.analyzeEV(mask,s);
+    let prob=new Float64Array(m.H);
+    for(let r=0;r<m.nRed;r++)for(let g=0;g<6;g++)prob[r*6+g]=m.redInit[r]/6;
+    prob=propagate(m,prob,a.keepPol2);prob=propagate(m,prob,a.keepPol1);
+    let result=0;
+    for(let h=0;h<m.H;h++){
+      const mass=prob[h];if(mass===0)continue;
+      const c=a.scorePol[h],points=m.score[h*N_CAT+c],nextMask=mask^(1<<c);
+      const nextUpper=c<5?Math.min(55,s+points):s;
+      result+=mass*this.bonusProbability(nextMask,nextUpper);
+    }
+    this._bonus.set(key,result);return result;
+  }
+  // Probability that each category will be recorded after taking a keep action.
+  // rerollsLeft includes the roll immediately following action (1|2).
+  targetDistribution(own,opp,action,green,rerollsLeft){
+    const m=this.m,out=new Float64Array(N_CAT),remaining=popcount(own.mask);
+    if(remaining===1){out[Math.log2(own.mask)|0]=1;return out;}
+    const k=action.keepIdx==null?m.keepIndex.get(action.keep.join(',')):action.keepIdx;
+    if(k==null)throw new Error('unknown keep action');
+    let prob=new Float64Array(m.H);const ti=m.transIdx[k],tp=m.transP[k];
+    if(action.keepGreen){
+      const g=green-1;
+      for(let j=0;j<ti.length;j++)prob[ti[j]*6+g]+=tp[j];
+    }else{
+      for(let j=0;j<ti.length;j++){const p=tp[j]/6,b=ti[j]*6;for(let g=0;g<6;g++)prob[b+g]+=p;}
+    }
+    const ev=this.analyzeEV(own.mask,Math.min(55,own.upperRaw));
+    if(rerollsLeft===2)prob=propagate(m,prob,ev.keepPol1);
+    for(let h=0;h<m.H;h++){
+      const mass=prob[h];if(mass===0)continue;
+      let cat;
+      if(remaining===2){
+        cat=this.evaluateCategory(own,opp,m.redStates[Math.floor(h/6)],h%6+1).recommended.cat;
+      }else cat=ev.scorePol[h];
+      out[cat]+=mass;
+    }
+    return out;
   }
   // Future-score distribution under the EV policy from state (mask, s). Only needed for popcount(mask) <= 2 in play.
   distFuture(mask,s){
@@ -583,9 +645,10 @@ class Strategy{
     const cands=[];
     if(remaining>=3||remaining===1){
       const a=this.analyzeEV(own.mask,s0);
-      for(let c=0;c<N_CAT;c++){if(!(own.mask&(1<<c)))continue;const raw=m.score[h*N_CAT+c];const nm=own.mask^(1<<c);let v,reward=raw;
-        if(c<5){const sn=Math.min(55,s0+raw);if(s0<55&&sn===55)reward+=40;v=reward+this.V[nm][sn];}else v=raw+this.V[nm][s0];
-        cands.push({cat:c,points:raw,reward,value:v,mean:v});}
+      for(let c=0;c<N_CAT;c++){if(!(own.mask&(1<<c)))continue;const raw=m.score[h*N_CAT+c];const nm=own.mask^(1<<c);let reward=raw,sn=s0;
+        if(c<5){sn=Math.min(55,s0+raw);if(s0<55&&sn===55)reward+=40;}
+        const future=this.V[nm][sn],v=reward+future;
+        cands.push({cat:c,points:raw,reward,future,value:v,mean:v,nextMask:nm,nextUpper:sn});}
       let best=-Infinity;for(const c of cands)if(c.value>best)best=c.value;
       for(const c of cands)c.correct=c.value>=best-TOL_EV-EPS;
       const rec=cands.filter(c=>c.value>=best-EPS).sort((a,b)=>(b.mean-a.mean)||(a.cat-b.cat))[0];
@@ -597,7 +660,7 @@ class Strategy{
     for(let c=0;c<N_CAT;c++){if(!(own.mask&(1<<c)))continue;const raw=m.score[h*N_CAT+c];const nm=own.mask^(1<<c);let reward=raw,sn=s0;
       if(c<5){sn=Math.min(55,s0+raw);if(s0<55&&sn===55)reward+=40;}
       const fut=this.distFuture(nm,sn);const ownD=new Float64Array(Math.min(MAX_TOTAL+1,fut.length+reward));for(let i=0;i<fut.length&&i+reward<=MAX_TOTAL;i++)ownD[i+reward]=fut[i];
-      const eq=exactMatchEquity(ownD,oppF,diff);cands.push({cat:c,points:raw,reward,value:eq,mean:meanOf(ownD),evValue:reward+this.V[nm][sn]});}
+      const eq=exactMatchEquity(ownD,oppF,diff);cands.push({cat:c,points:raw,reward,future:this.V[nm][sn],value:eq,mean:meanOf(ownD),futureMean:meanOf(fut),zeroProbability:fut[0]||0,evValue:reward+this.V[nm][sn],nextMask:nm,nextUpper:sn});}
     let best=-Infinity;for(const c of cands)if(c.value>best)best=c.value;
     for(const c of cands)c.correct=c.value>=best-TOL_EQ-EPS;
     const rec=cands.filter(c=>c.value>=best-EPS).sort((a,b)=>(b.mean-a.mean)||(a.cat-b.cat))[0];
@@ -624,80 +687,83 @@ function straightOuts(shape){const K=new Set(shape.faces);const outs=new Set();c
   return[...outs].sort((a,b)=>a-b);}
 function isStraightCore(shape){const d=Object.keys(shape.groups).map(Number);if(d.length<3)return false;if(d.some(f=>shape.groups[f]>1))return false;
   const lo=d[0],hi=d[d.length-1];if(hi-lo>4)return false;return(hi-lo)<=d.length+(shape.wild?2:0)-1;}
-// Reasons for a keep recommendation. ctx: {own, opp, green, rerollsLeft, scores, rec, remaining, userAction?, evalResult?}
-function keepReasons(ctx){
-  const{own,green,rec,scores}=ctx;const shape=keptShape(rec.keep,rec.keepGreen,green);const open=c=>!!(own.mask&(1<<c));
-  const all=rec.nKept===5;const reasons=[];
-  const madeLower=(scores[7]>0&&open(7))?7:(scores[6]>0&&open(6))?6:(scores[5]>0&&open(5))?5:-1;
-  if(all&&scores[7]===70&&open(7))reasons.push('BONUS_YACHT');
-  else if(all&&madeLower>=0)reasons.push('MADE_HAND');
-  const wildKept=green===1&&rec.keepGreen===1;
-  const ua=ctx.userAction;const userDroppedWild=ua&&green===1&&ua.keepGreen===0&&wildKept;
-  if(userDroppedWild)reasons.unshift('KEEP_WILD');
-  if(ctx.remaining===1)reasons.push('TARGET_SCORE');
-  const groups=shape.groups;const faces=Object.keys(groups).map(Number);
-  const pairs=faces.filter(f=>groups[f]>=2);
-  if(!all){
-    if(open(6)&&isStraightCore(shape))reasons.push('STRAIGHT_CORE');
-    else if(open(5)&&pairs.length===2&&shape.faces.length===4)reasons.push('FULL_HOUSE_PAIRS');
-    else if(faces.length===1){const f=faces[0];const cnt=groups[f]+(shape.wild?1:0);
-      if(f>=4&&open(f-2))reasons.push('UPPER_RECOVERY');
-      else if(f>=2&&f<=3&&open(f-2))reasons.push('SACRIFICE_LOW');
-      else if(cnt>=2&&(open(5)||open(7)))reasons.push('FULL_HOUSE_PAIRS');}
-    else if(faces.length===0&&shape.wild)reasons.push('KEEP_WILD');
-  }
-  if(wildKept&&!reasons.includes('KEEP_WILD'))reasons.push('KEEP_WILD');
-  if(reasons.length===0)reasons.push(all?'MADE_HAND':'FUTURE_VALUE');
-  return reasons.slice(0,2);
-}
+function actionShapeKey(action,green){const shape=keptShape(action.keep,action.keepGreen,green);return shape.faces.join(',')+'|'+(shape.wild?1:0);}
 // Facts used to phrase the explanation of a keep recommendation.
 function keepFacts(ctx){
   const{own,opp,green,rec,scores,remaining}=ctx;const shape=keptShape(rec.keep,rec.keepGreen,green);const open=c=>!!(own.mask&(1<<c));
   const faces=Object.keys(shape.groups).map(Number);const madeLower=(scores[7]>0&&open(7))?7:(scores[6]>0&&open(6))?6:(scores[5]>0&&open(5))?5:-1;
-  let gain=null;if(ctx.evalResult){const vals=ctx.evalResult.actions.map(a=>a.value).sort((a,b)=>b-a);if(vals.length>1)gain=vals[0]-vals[1];}
+  let second=null,gain=null,targetDistribution=null,targetTop=[];
+  if(ctx.evalResult){
+    const key=actionShapeKey(rec,green);
+    second=ctx.evalResult.actions.filter(a=>actionShapeKey(a,green)!==key).sort((a,b)=>b.value-a.value)[0]||null;
+    if(second)gain=rec.value-second.value;
+  }
+  if(ctx.strategy){
+    targetDistribution=ctx.strategy.targetDistribution(own,opp,rec,green,ctx.rerollsLeft);
+    targetTop=Array.from(targetDistribution,(probability,cat)=>({cat,name:CAT_NAMES_JA[cat],probability})).filter(x=>x.probability>EPS).sort((a,b)=>b.probability-a.probability||a.cat-b.cat);
+  }
+  const target=targetTop[0]||null;
+  const bonusProbability=ctx.strategy&&own.upperRaw<55?ctx.strategy.bonusProbability(own.mask,Math.min(55,own.upperRaw)):(own.upperRaw>=55?1:null);
   return{shape,keepGreen:!!rec.keepGreen,faces,pairs:faces.filter(f=>shape.groups[f]>=2),face:faces.length===1?faces[0]:null,count:faces.length===1?shape.groups[faces[0]]+(shape.wild?1:0):0,
     madeLower,madePoints:madeLower>=0?scores[madeLower]:0,outs:straightOuts(shape),B:upperMargin(ctx.scoresCard||[]),diff:opp.total-own.total,oppRemaining:popcount(opp.mask),
-    gain,objective:ctx.evalResult?ctx.evalResult.objective:'ev',upperRaw:own.upperRaw,remaining};
+    gain,gainPP:ctx.evalResult&&ctx.evalResult.objective==='equity'&&gain!=null?gain*100:null,secondValue:second?second.value:null,bestValue:rec.value,
+    objective:ctx.evalResult?ctx.evalResult.objective:'ev',upperRaw:own.upperRaw,remaining,targetDistribution,targetTop,target,
+    bonusProbability,wildYachtOpen:shape.wild&&open(7)&&rec.keep[0]>=2};
 }
-// Reasons for a category recommendation. ctx: {own, opp, evalResult, rec, scores, remaining, userCat?}
-function categoryReasons(ctx){
-  const{own,rec,remaining,evalResult}=ctx;const c=rec.cat;const reasons=[];
-  const upperRaw=own.upperRaw;const bonusDone=upperRaw>=55;
-  const typeReason=()=>{
-    if(c===7&&rec.points===70)return'BONUS_YACHT';
-    if(c>=5&&rec.points>0)return'MADE_HAND';
-    if(rec.points===0)return'FORCED_ZERO';
-    if(c<5&&!bonusDone&&rec.points>=3*UPPER_FACES[c])return'UPPER_PROTECT';
-    if(c<5&&rec.points<3*UPPER_FACES[c])return'SACRIFICE_LOW';
-    return'FUTURE_VALUE';};
-  if(remaining===2&&evalResult.objective==='equity'){
-    const changed=rec.cat!==evalResult.evChoice;
-    const leftover=[0,1,2,3,4,5,6,7].find(k=>(own.mask&(1<<k))&&k!==c);
-    const upside=leftover===6||leftover===7;
-    const winCode=(evalResult.diff<=0&&!upside)||(evalResult.diff>0&&!upside&&!changed)?'LEAD_STABILITY':(upside?'TRAIL_UPSIDE':'LEAD_STABILITY');
-    if(changed){reasons.push(winCode);reasons.push(typeReason());}
-    else{reasons.push(typeReason());reasons.push(winCode);}
-    return reasons.slice(0,2);
+// Reasons for a keep recommendation. Conditions are based on calculated quantities, not just the visible shape.
+function keepReasons(ctx){
+  const{own,green,rec,scores}=ctx;const F=ctx.facts||keepFacts(ctx);const open=c=>!!(own.mask&(1<<c));const all=rec.nKept===5;
+  if(ctx.remaining===1)return['TARGET_SCORE'];
+  if(all&&scores[7]===70&&open(7))return['BONUS_YACHT'];
+  if(F.wildYachtOpen)return['BONUS_YACHT_DRAW'];
+  if(F.gain!=null&&F.objective==='ev'&&F.gain<0.3)return['NEAR_TIE'];
+  if(F.gainPP!=null&&F.gainPP<0.5)return['NEAR_TIE'];
+  if(all&&F.madeLower>=0)return['MADE_HAND'];
+  const ua=ctx.userAction,wildKept=green===1&&rec.keepGreen===1;
+  if(wildKept&&ua&&ua.keepGreen===0)return['KEEP_WILD'];
+  const top=F.target;
+  if(top&&top.cat===6&&top.probability>=0.4&&isStraightCore(F.shape))return['STRAIGHT_CORE'];
+  if(top&&(top.cat===5||top.cat===7)&&(open(5)||open(7))&&(F.pairs.length||F.count>=2))return['FULL_HOUSE_PAIRS'];
+  if(top&&top.cat<5&&F.face===UPPER_FACES[top.cat]){
+    if(F.face>=4&&F.bonusProbability>=0.05&&own.upperRaw<55)return['UPPER_RECOVERY'];
+    if(F.face<=3)return['SACRIFICE_LOW'];
   }
-  reasons.push(typeReason());
-  if(reasons[0]!=='FUTURE_VALUE'&&reasons[0]!=='UPPER_PROTECT'&&c<5&&!bonusDone&&rec.points>0){
-    const after=ctx.scoresCard?upperMargin(Object.assign(ctx.scoresCard.slice(),{[c]:rec.points})):null;
-    if(after==null||after>=-3)reasons.push('UPPER_PROTECT');}
-  return reasons.slice(0,2);
+  if(wildKept)return['KEEP_WILD'];
+  return[all?'MADE_HAND':'FUTURE_VALUE'];
 }
 function catFacts(ctx){
   const{own,opp,rec,evalResult,remaining}=ctx;const c=rec.cat;
-  const cands=evalResult.candidates.slice().sort((a,b)=>b.value-a.value);const second=cands.find(x=>x.cat!==c);
+  const cands=evalResult.candidates.slice().sort((a,b)=>b.value-a.value||a.cat-b.cat);const second=cands.find(x=>x.cat!==c)||null;
   const leftover=remaining===2?[0,1,2,3,4,5,6,7].find(k=>(own.mask&(1<<k))&&k!==c):null;
   const evCand=evalResult.candidates.find(x=>x.cat===evalResult.evChoice);
   const after=ctx.scoresCard?upperMargin(Object.assign(ctx.scoresCard.slice(),{[c]:rec.points})):null;
-  return{cat:c,points:rec.points,name:CAT_NAMES_JA[c],leftover,leftoverName:leftover!=null?CAT_NAMES_JA[leftover]:null,
+  const bonusProbability=ctx.strategy&&rec.nextMask!=null?ctx.strategy.bonusProbability(rec.nextMask,rec.nextUpper):(own.upperRaw>=55?1:null);
+  const breakdowns={};for(const candidate of evalResult.candidates)breakdowns[candidate.cat]={current:candidate.reward,future:candidate.future,value:candidate.value,objective:evalResult.objective};
+  return{cat:c,points:rec.points,reward:rec.reward,future:rec.future,name:CAT_NAMES_JA[c],leftover,leftoverName:leftover!=null?CAT_NAMES_JA[leftover]:null,
     evCat:evalResult.evChoice,evName:CAT_NAMES_JA[evalResult.evChoice],changed:c!==evalResult.evChoice,objective:evalResult.objective,
     diff:evalResult.diff!=null?evalResult.diff:opp.total-own.total,
-    gain:second?rec.value-second.value:null,  // EV: points; equity: probability
+    gain:second?rec.value-second.value:null,gainPP:second&&evalResult.objective==='equity'?(rec.value-second.value)*100:null,
+    secondCat:second?second.cat:null,secondName:second?CAT_NAMES_JA[second.cat]:null,secondValue:second?second.value:null,bestValue:rec.value,
     eqGainPP:(evalResult.objective==='equity'&&evCand)?(rec.value-evCand.value)*100:null,
     meanDelta:(evalResult.objective==='equity'&&evCand)?rec.mean-evCand.mean:null,
-    Bafter:after,bonusDone:own.upperRaw>=55,upperRaw:own.upperRaw,remaining};
+    leftoverZeroProbability:rec.zeroProbability, leftoverMean:rec.futureMean,
+    Bafter:after,bonusProbability,bonusDone:own.upperRaw>=55,upperRaw:own.upperRaw,remaining,breakdowns};
+}
+// Reasons for a category recommendation. ctx: {own, opp, evalResult, rec, scores, remaining, userCat?}
+function categoryReasons(ctx){
+  const{own,rec,remaining,evalResult}=ctx;const F=ctx.facts||catFacts(ctx);const c=rec.cat;
+  if(remaining===1)return['LAST_CATEGORY'];
+  if((evalResult.objective==='ev'&&F.gain!=null&&F.gain<0.3)||(evalResult.objective==='equity'&&F.gainPP!=null&&F.gainPP<0.5))return['NEAR_TIE'];
+  if(remaining===2&&evalResult.objective==='equity')return[evalResult.diff>0?'TRAIL_UPSIDE':'LEAD_STABILITY'];
+  if(c===7&&rec.points===70)return['BONUS_YACHT'];
+  if(rec.points===0)return['FORCED_ZERO'];
+  if(c<5&&!F.bonusDone&&F.bonusProbability>=0.05&&rec.points>=3*UPPER_FACES[c])return['UPPER_PROTECT'];
+  if(c<5&&rec.points<3*UPPER_FACES[c]){
+    const second=evalResult.candidates.find(x=>x.cat===F.secondCat);
+    if(second&&second.cat>=5&&second.points===0)return['SACRIFICE_LOW'];
+  }
+  if(c>=5&&rec.points>0)return['MADE_HAND'];
+  return['FUTURE_VALUE'];
 }
 
 /* アリスのうらない：次の 1 投のあと、目 face がちょうど k 個（k=0..5）そろう確率。
@@ -813,17 +879,20 @@ const CAT_DESC=[
 const REASONS={
   KEEP_WILD:{p:'W は必ず残すにゃ',r:'W はどの目にもなれて、70 点ヨットも作れるからにゃ'},
   BONUS_YACHT:{p:'この形は全部残してヨットにするにゃ',r:'W と赤い 1 が 4 個なら 70 点だからにゃ'},
+  BONUS_YACHT_DRAW:{p:'70 点ヨットの目も残すにゃ',r:'W と赤い 1 を育てれば 70 点になるからにゃ'},
   MADE_HAND:{p:'完成した役は崩さないにゃ',r:'もう固定点を取れる形だからにゃ'},
   STRAIGHT_CORE:{p:'ストレートの連番を残すにゃ',r:'連番は足りない目のどちら側でも完成するからにゃ'},
   FULL_HOUSE_PAIRS:{p:'二対を残してフルハウスを待つにゃ',r:'残り 1 個の成功面が多いからにゃ'},
   UPPER_RECOVERY:{p:'高い同目をまとめて残すにゃ',r:'上段の不足を 5 や 6 で取り戻しやすいからにゃ'},
   UPPER_PROTECT:{p:'上段を優先して記録するにゃ',r:'55 点のボーナス圏を守るためにゃ'},
   SACRIFICE_LOW:{p:'今回は低い上段へ逃がすにゃ',r:'大きい固定役を 0 点で潰さないためにゃ'},
-  LEAD_STABILITY:{p:'リード中は 0 点を避けるにゃ',r:'上振れより逃げ切れる確率が大事だからにゃ'},
-  TRAIL_UPSIDE:{p:'劣勢なら逆転できる役を残すにゃ',r:'平均点より必要点へ届く確率が大事だからにゃ'},
+  LEAD_STABILITY:{p:'勝率が高い残し方を選ぶにゃ',r:'期待点より勝率が大事だからにゃ'},
+  TRAIL_UPSIDE:{p:'劣勢では勝率を優先するにゃ',r:'期待点より勝率が大事だからにゃ'},
   TARGET_SCORE:{p:'必要点を超える目を狙うにゃ',r:'最終手番は相手点を上回れば勝ちだからにゃ'},
   FUTURE_VALUE:{p:'今はこの役へ記録するにゃ',r:'その役を残した場合より後の選択肢が強くなるからにゃ'},
   FORCED_ZERO:{p:'0 点を付けるならこの役にするにゃ',r:'他の役の期待値を残せるからにゃ'},
+  NEAR_TIE:{p:'どちらでもいい手にゃ',r:'次善との差がほとんどないからにゃ'},
+  LAST_CATEGORY:{p:'最後の役へ記録するにゃ',r:'もう記録先は 1 つだけだからにゃ'},
 };
 /* 正解の KEEP を褒める言葉。 */
 const PRAISE=[
@@ -840,119 +909,49 @@ const KEEP_FUTURE={p:'先の役が強くなる形を残すにゃ',r:'その方�
 const fmt1=x=>(Math.round(x*10)/10).toString();
 /* 役名が数字で始まるときだけ前に空白を足す。 */
 const jn=n=>/^\d/.test(n)?' '+n:n;
+function keepGap(F){
+  if(F.gain==null||F.objective!=='ev')return'';
+  if(F.gain<0.3)return'。別の残し方とほぼ同じで、どちらでもいいにゃ';
+  if(F.gain<1)return`。次善とは僅差で、差は ${fmt1(F.gain)} 点にゃ`;
+  return`。次善より期待点が ${fmt1(F.gain)} 点高いにゃ`;
+}
 
 /* 理由コード＋事実（残した形・残す役・点差・勝率差・期待点差・余裕 B）から、原則（チップ）と理由文を組み立てる */
 function composeKeep(code,F,stem){
-  const R=REASONS[code];
-  const sh=F.shape;
-  switch(code){
-    case 'KEEP_WILD':
-      return{chip:R.p,reason:`${stem}のは、${R.r}`};
-    case 'BONUS_YACHT':
-      return{chip:R.p,reason:`${stem}のは、${R.r}`};
-    case 'MADE_HAND':{
-      if(F.madeLower>=0){
-        const made=`${stem}のは、${CAT_SPEECH[F.madeLower]}の ${F.madePoints} 点をもう固定で取れる形だからにゃ`;
-        return{chip:'完成した役は崩さないにゃ',reason:made};
-      }
-      return{chip:'これ以上は振らないにゃ',reason:`${stem}のは、振り直しても期待点が上がらない形だからにゃ`};
-    }
-    case 'STRAIGHT_CORE':{
-      const fs=sh.faces.join('・')+(sh.wild?'・W':'');
-      const r=F.outs.length===1
-        ?`残り 1 個が ${F.outs[0]} なら L ストレートが完成するからにゃ`
-        :F.outs.length
-          ?`残り 1 個が ${F.outs.join('・')} のどれかなら L ストレートが完成するからにゃ`
-          :`残り 2 個で連番をそろえにいく形だからにゃ`;
-      return{chip:'連番を残してストレートを狙うにゃ',reason:`${fs} を残すのは、${r}`};
-    }
-    case 'FULL_HOUSE_PAIRS':{
-      if(F.pairs.length===2){
-        const[a,b]=F.pairs;
-        const wOk=!F.keepGreen;
-        const r=`${a}・${a}・${b}・${b} を残すのは、残り 1 個が ${a} か ${b}${wOk?' か W':''} なら完成する、成功面の多い形だからにゃ`;
-        return{chip:'二対を残してフルハウスを待つにゃ',reason:r};
-      }
-      if(F.count>=3){
-        const r=`${stem}のは、残りが対になればフルハウス、同じ目ならヨットになるからにゃ`;
-        return{chip:'同じ目 3 個を残して大きな役を待つにゃ',reason:r};
-      }
-      return{chip:'対を残して役を育てるにゃ',reason:`${stem}のは、同じ目が増えればフルハウスやヨットの形になるからにゃ`};
-    }
-    case 'UPPER_RECOVERY':{
-      const f=F.face;
-      const need=F.B<0?`（いま上段は基準より ${-F.B} 点不足）`:'';
-      const chip=F.count>=2?`高い目 ${f} をまとめて残すにゃ`:`高い目 ${f} を軸に残すにゃ`;
-      return{chip,reason:`${stem}のは、${f} を 3 個以上そろえると上段 55 点のボーナスに近づくからにゃ${need}`};
-    }
-    case 'SACRIFICE_LOW':{
-      const f=F.face;
-      const r=`${stem}のは、低い目でも 0 点にすると上段の余裕 B が ${3*f} 点減るからにゃ`;
-      return{chip:`${f} を残して上段の穴を埋めるにゃ`,reason:r};
-    }
-    case 'TARGET_SCORE':{
-      const d=F.diff;
-      const who=d>0?`相手に ${d} 点負けている`:d<0?`相手に ${-d} 点勝っている`:'同点';
-      const opp=F.oppRemaining>0?'（相手はまだ 1 役残しているにゃ）':'';
-      const r=`${stem}のは、いま${who}ので、最終手番は平均点でなく相手を上回る確率だけが大事だからにゃ${opp}`;
-      return{chip:'必要点を超える目だけを狙うにゃ',reason:r};
-    }
-    default:{
-      const g=F.gain!=null&&F.objective==='ev'&&F.gain>0.005?`（次善の残し方より期待点で +${fmt1(F.gain)}）`:'';
-      const r=F.shape.n===0
-        ?`何も残さない方が後の期待点で最も高いからにゃ${g}`
-        :`${stem}のは、この残し方が後の期待点で最も高いからにゃ${g}`;
-      return{chip:KEEP_FUTURE.p,reason:r};
-    }
+  const R=REASONS[code]||REASONS.FUTURE_VALUE;
+  if(code==='BONUS_YACHT')return{chip:R.p,reason:`${stem}と、70 点ヨットを確定できるにゃ`};
+  if(code==='BONUS_YACHT_DRAW')return{chip:R.p,reason:`${stem}のは、W と赤い 1 を育てれば 70 点ヨットも狙えるからにゃ${keepGap(F)}`};
+  if(code==='TARGET_SCORE'){
+    const second=F.secondValue==null?'':`。次善は ${fmtPct(F.secondValue)} にゃ`;
+    return{chip:R.p,reason:`${stem}の勝率が ${fmtPct(F.bestValue)} で最も高いにゃ${second}`};
   }
+  if(code==='KEEP_WILD'){
+    const why=F.wildYachtOpen?'W はどの目にもなれて、70 点ヨットも狙える':'W はどの目にもなれる';
+    return{chip:R.p,reason:`${stem}のは、${why}からにゃ${keepGap(F)}`};
+  }
+  if(code==='MADE_HAND'&&F.madeLower>=0)return{chip:R.p,reason:`${stem}と、${CAT_SPEECH[F.madeLower]}へ ${F.madePoints} 点で書けるにゃ${keepGap(F)}`};
+  if(F.target){
+    const first=`${stem}と、最後は${jn(F.target.name)}へ書く見込みが ${fmtPct(F.target.probability)} で最も高いにゃ`;
+    const second=keepGap(F);
+    let chip=code==='NEAR_TIE'?REASONS.NEAR_TIE.p:R.p;
+    if(code==='FULL_HOUSE_PAIRS')chip=F.pairs.length===2?'二対を残してフルハウスを待つにゃ':F.count>=3?'同じ目 3 個を残して下段役を狙うにゃ':'対を残して下段役を狙うにゃ';
+    return{chip,reason:first+second};
+  }
+  return{chip:code==='NEAR_TIE'?REASONS.NEAR_TIE.p:KEEP_FUTURE.p,reason:`${stem}のが最も有利にゃ`};
 }
 
 function composeCat(code,F,stem){
-  const R=REASONS[code];
-  switch(code){
-    case 'BONUS_YACHT':
-      return{chip:R.p,reason:`${stem}のは、${R.r}`};
-    case 'MADE_HAND':{
-      const r=`${stem}のは、${F.points} 点を固定で取れて、後に残すと 0 点になる恐れがあるからにゃ`;
-      return{chip:'完成した役はその場で取るにゃ',reason:r};
-    }
-    case 'FORCED_ZERO':{
-      const g=F.gain!=null&&F.objective==='ev'&&F.gain>0.005?`（他の役に 0 を書くより期待点で +${fmt1(F.gain)}）`:'';
-      return{chip:`0 点を付けるなら${jn(F.name)}にするにゃ`,reason:`${stem}のは、他の役の期待点を残せるからにゃ${g}`};
-    }
-    case 'UPPER_PROTECT':{
-      const b=F.Bafter!=null?`。記録後の余裕 B は ${F.Bafter>=0?'+':''}${F.Bafter}`:'';
-      return{chip:'上段を固めてボーナスを守るにゃ',reason:`${stem}のは、55 点のボーナス圏を守るためにゃ${b}`};
-    }
-    case 'SACRIFICE_LOW':{
-      const r=`${stem}のは、大きい固定役を 0 点で潰さないためにゃ（${F.points} 点でも役の枠を 1 つ消化できる）`;
-      return{chip:`今回は${jn(F.name)}へ逃がすにゃ`,reason:r};
-    }
-    case 'LEAD_STABILITY':
-    case 'TRAIL_UPSIDE':{
-      const behind=F.diff>0;
-      const lead=F.diff<0?`${-F.diff} 点リード`:behind?`${F.diff} 点ビハインド`:'同点';
-      const upside=F.leftover===6||F.leftover===7;
-      const why=upside
-        ?(behind
-          ?`最後に残す${jn(F.leftoverName)}は一発の点が大きく、逆転の上限を持てる`
-          :`最後に残す${jn(F.leftoverName)}は一発の点が大きく、相手の上振れにも備えられる`)
-        :(behind
-          ?`最後に残す${jn(F.leftoverName)}は 0 点になりにくく、確実に点を積める`
-          :`最後に残す${jn(F.leftoverName)}は 0 点になりにくく、逃げ切りやすい`);
-      const chip=upside
-        ?(behind?'劣勢なら逆転できる役を最後に残すにゃ':'最後に大きな役を残すにゃ')
-        :(behind?'不利でも手堅い役を最後に残すにゃ':'リード中は逃げ切りやすい役を最後に残すにゃ');
-      let r=`${stem}のは、いま ${lead}で、${why}からにゃ`;
-      if(F.changed&&F.eqGainPP!=null)r+=`（平均点重視なら${jn(F.evName)}だが、勝率は ${fmt1(F.eqGainPP)} ポイント高い）`;
-      return{chip,reason:r};
-    }
-    default:{
-      const g=F.gain!=null&&F.objective==='ev'&&F.gain>0.005?`（次善の役より +${fmt1(F.gain)}）`:'';
-      const r=`${stem}のは、他の役に書くよりその後の期待点が高いからにゃ${g}`;
-      return{chip:`今は${jn(F.name)}へ記録するにゃ`,reason:r};
-    }
+  const R=REASONS[code]||REASONS.FUTURE_VALUE;
+  if(code==='LAST_CATEGORY')return{chip:R.p,reason:`最後の役は${jn(F.name)}だけだから、そこへ ${F.points} 点で書くにゃ`};
+  if(F.objective==='equity'){
+    const second=F.gainPP==null?'':F.gainPP<0.5?'。次善とほぼ同じで、どちらでもいいにゃ':`。次善より勝率が ${fmt1(F.gainPP)} ポイント高いにゃ`;
+    return{chip:code==='NEAR_TIE'?REASONS.NEAR_TIE.p:R.p,reason:`${F.name}に書いて${jn(F.leftoverName)}を残すと勝率 ${fmtPct(F.bestValue)} にゃ${second}`};
   }
+  const current=F.reward==null?F.points:F.reward,future=F.future==null?0:F.future;
+  const first=`${F.name}は、いま ${fmt1(current)} 点＋この先 ${fmt1(future)} 点の見込みにゃ`;
+  let second='';
+  if(F.gain!=null)second=F.gain<0.3?`。${jn(F.secondName)}とはほぼ同じで、どちらでもいいにゃ`:F.gain<1?`。${jn(F.secondName)}とは僅差で、差は ${fmt1(F.gain)} 点にゃ`:`。次善より ${fmt1(F.gain)} 点高いにゃ`;
+  return{chip:code==='NEAR_TIE'?REASONS.NEAR_TIE.p:R.p,reason:first+second};
 }
 
 /* 主因の理由文に、第 2 の理由を「〜のも大事にゃ」の形で 1 つだけ足す。 */
@@ -976,7 +975,8 @@ function reasonLines(reasons,stem,isKeep,facts){
 /* 確率の表示（アリスのうらないの枡）。小さい値は 1 桁の小数、ほぼ 0 は「≈0%」にする。 */
 function fmtPct(p){
   if(p<=0)return '0%';
-  if(p>=0.995)return '100%';
+  if(Math.abs(p-1)<1e-12)return '100%';
+  if(p>=0.995)return '99.9%';
   if(p>=0.1)return Math.round(p*100)+'%';
   if(p>=0.0005)return (p*100).toFixed(1)+'%';
   return '≈0%';
@@ -1213,6 +1213,7 @@ TV.defineStore('game',function(){
     rng:null,
     first:'user',
     fast:false,
+    kommyQuiet:false,
     chatOpen:false,
     lastPraise:-1,
     busy:false,
@@ -1307,12 +1308,17 @@ function applyScore(p,cat,pts){
 }
 
 /* 状態だけから決まる述語。DOM も描画も知らないので、部品からも店からも呼べる。 */
-/* アリスのうらない：プレイヤーがキープを選べるときだけ使える。 */
-function canFortune(){
+/* アリスのうらない：通常操作と解説表示を分ける。canFortune は公開互換の合成述語。 */
+function canUserFortune(){
   var t=G.turn;
   if(G.mode==='serious'||G.phase!=='playing'||G.active!=='user')return false;
   return !!t&&t.rollNumber>0&&t.rollNumber<3&&!G.busy&&!G.pending;
 }
+function canExplanationFortune(){
+  var c=ui().state.fortuneContext;
+  return G.mode!=='serious'&&G.phase==='playing'&&!!c&&c.source!=='user';
+}
+function canFortune(){return canUserFortune()||canExplanationFortune();}
 /* 記録の候補を選べるか。候補のボタンと #btnRegister が出る条件で、Enter の記録もこれで決まる。 */
 function canSelect(){
   var t=G.turn;
@@ -1341,6 +1347,11 @@ function fanfare(sc){
 function flashRow(who,cat){
   ui().state.flash={who:who,cat:cat,seq:ui().state.flash.seq+1};
 }
+function clearExplanationDisplay(){
+  ui().state.fortuneContext=null;
+  ui().state.explanationPaused=false;
+  ui().state.scoreBreakdowns=null;
+}
 
 /* ---------------- 試合の流れ ---------------- */
 function newMatch(seed,mode){
@@ -1353,12 +1364,14 @@ function newMatch(seed,mode){
   G.stats={decisions:0,correct:0,advised:0};
   G.phase='playing';
   G.fast=false;
+  G.kommyQuiet=false;
   G.pending=null;
   G.busy=false;
   G.resultShown=false;
   G.selCat=null;
   G.koSel=null;
   G.fortune=false;
+  clearExplanationDisplay();
   G.first=G.rng.dice()<0.5?'user':'kommy';
   G.active=G.first;
   clearAdviceLog();
@@ -1379,6 +1392,7 @@ function startTurn(){
   G.pending=null;
   G.busy=false;
   G.fortune=false;
+  clearExplanationDisplay();
   G.anim=null;
   G.advice=null;
   if(G.active!=='user'){
@@ -1405,6 +1419,7 @@ async function doRoll(){
   t.rollNumber++;
   G.busy=true;
   G.fortune=false;
+  clearExplanationDisplay();
   const idx=Object.keys(res).map(Number);
   /* 演出のコマは店に置くだけで、描くのは views/Dice.js である */
   if(idx.length&&!REDUCED){
@@ -1461,6 +1476,8 @@ async function registerAndAdvance(cat){
 function showResult(){
   G.phase='result';
   G.turn=null;
+  G.fortune=false;
+  clearExplanationDisplay();
   const a=me().total;
   const b=ko().total;
   /* 前の試合の共有の枠を畳んでおく */
@@ -1483,7 +1500,9 @@ function backToTitle(){
   G.pending=null;
   G.busy=false;
   G.fortune=false;
+  clearExplanationDisplay();
   G.fast=false;
+  G.kommyQuiet=false;
   G.anim=null;
   G.advice=null;
   G.phase='title';
@@ -1532,6 +1551,8 @@ function debugSeed(){
 
 TDX.game={
   canFortune:canFortune,
+  canUserFortune:canUserFortune,
+  canExplanationFortune:canExplanationFortune,
   canSelect:canSelect,
   baseExpr:baseExpr,
   newPlayer:newPlayer,
@@ -1593,6 +1614,11 @@ TV.defineStore('ui',function(){
     flash:{who:'',cat:-1,seq:0},
     /* うらないの開閉の演出。views/Scorecard.js が seq を見て .shine を付け外しする。 */
     fortuneFx:{seq:0},
+    /* 解説用うらないの対象。source は user / kommy / advice。手動で再表示した間だけ待ちを止める。 */
+    fortuneContext:null,
+    explanationPaused:false,
+    /* 記録理由を表示中の候補別「いま＋この先」。 */
+    scoreBreakdowns:null,
     /* タイトルの顔の演出。kind は squash（叩く）か hearts（なでる）で、views/TitleScreen.js が seq を見る。 */
     titleFx:{kind:'',seq:0},
     /* 焦点を移す先の選択子。描き直しの後に views/App.js が 1 回だけ移す。 */
@@ -1789,6 +1815,20 @@ TV.defineStore('tutor',function(){
     try{localStorage.removeItem(ADVICE_KEY);}catch(e){}
     saveAdviceLog();
   }
+  function turnContext(kind){
+    const turn=G.turn;
+    if((kind!=='reason'&&kind!=='advice')||!turn||turn.rollNumber<1)return null;
+    let held=turn.held.slice();
+    if(kind==='advice'&&G.pending&&G.pending.type==='keep'&&G.pending.recHeld){
+      held=G.pending.recHeld.slice();
+    }
+    return {
+      rollNumber:turn.rollNumber,
+      redFaces:turn.redFaces.slice(),
+      green:turn.green,
+      held:held,
+    };
+  }
   function logAdvice(kind,l1,l2,chip,tone,extra){
     if(!kind||kind==='none')return null;
     const L=G.adviceLog;
@@ -1797,10 +1837,13 @@ TV.defineStore('tutor',function(){
     if(kind==='reason'&&prev&&prev.kind==='principle'&&prev.l1===(l1||'')&&prev.chip===(chip||'')){
       prev.l2=l2||'';
       prev.kind='reason';
+      prev.turnContext=turnContext(kind);
       saveAdviceLog();
       return prev;
     }
     const e={round:G.round,who:G.active,kind:kind,chip:chip||'',l1:l1||'',l2:l2||'',tone:tone||''};
+    const context=turnContext(kind);
+    if(context)e.turnContext=context;
     if(extra&&typeof extra==='object')for(const k of Object.keys(extra))e[k]=extra[k];
     L.push(e);
     while(L.length>ADVICE_MAX)L.shift();
@@ -1866,9 +1909,9 @@ TV.defineStore('tutor',function(){
     const ua=ev.actions.find(a=>TD.sameAction(a,keep,keepGreen));
     const rec=ev.recommended;
     const kctx={own:stateOf(p),opp:stateOf(o),green:G.turn.green,rec,scores:handScores(),remaining:ev.remaining,
-      rerollsLeft:rerollsLeft(),userAction:{keep,keepGreen},evalResult:ev,scoresCard:p.categoryScores};
-    const reasons=TD.keepReasons(kctx);
+      rerollsLeft:rerollsLeft(),userAction:{keep,keepGreen},evalResult:ev,scoresCard:p.categoryScores,strategy:POLICY.strat};
     const facts=TD.keepFacts(kctx);
+    const reasons=TD.keepReasons(Object.assign({facts},kctx));
     return{correct:!!(ua&&ua.correct),rec,ev,reasons,facts,recHeld:heldFromAction(rec),userValue:ua?ua.value:null};
   }
   function gradeCategory(cat){
@@ -1878,9 +1921,9 @@ TV.defineStore('tutor',function(){
     const c=ev.candidates.find(x=>x.cat===cat);
     const rec=ev.recommended;
     const cctx={own:stateOf(p),opp:stateOf(o),evalResult:ev,rec,scores:handScores(),remaining:ev.remaining,
-      userCat:cat,scoresCard:p.categoryScores};
-    const reasons=TD.categoryReasons(cctx);
+      userCat:cat,scoresCard:p.categoryScores,strategy:POLICY.strat};
     const facts=TD.catFacts(cctx);
+    const reasons=TD.categoryReasons(Object.assign({facts},cctx));
     return{correct:!!(c&&c.correct),rec,ev,reasons,facts,userValue:c?c.value:null};
   }
 
@@ -1952,16 +1995,17 @@ var applyMood=GM.applyMood;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
 /* ---------------- 待ち ---------------- */
-/* チャットを開いているあいだは時間を数えない。早送りと、盤面のタップ（skip）で縮む。 */
+/* チャットか手動の解説用うらないを開いているあいだは時間を数えない。 */
 let skipFlag=false;
 async function wait(ms){
-  const target=G.fast?Math.min(ms,180):ms;
+  const kommyFast=G.kommyQuiet&&G.active==='kommy';
+  const target=(G.fast||kommyFast)?Math.min(ms,180):ms;
   let el=0;
   skipFlag=false;
   while(el<target){
     if(skipFlag){skipFlag=false;break;}
     await sleep(40);
-    if(!G.chatOpen)el+=40;
+    if(!G.chatOpen&&!UI.state.explanationPaused)el+=40;
   }
 }
 
@@ -1977,18 +2021,43 @@ function canRoll(){
 /* views/Scorecard.js の #btnRegister と同じ条件。キーボードの Enter もこれで決める。 */
 function canRegister(){return canSelect()&&G.selCat!=null;}
 
+function copyTurn(turn,held){
+  return{rollNumber:turn.rollNumber,redFaces:turn.redFaces.slice(),green:turn.green,held:(held||turn.held).slice()};
+}
+function targetForHeld(turn,held){
+  const action=TD.keptFromHeld(turn.redFaces,turn.green,held);
+  action.keepIdx=POLICY.strat.m.keepIndex.get(action.keep.join(','));
+  return POLICY.strat.targetDistribution(stateOf(G.players[G.active]),stateOf(G.players[G.active==='user'?'kommy':'user']),action,turn.green,rerollsLeft());
+}
+function setFortuneContext(source,automatic,turn,held,targetDistribution){
+  UI.state.fortuneContext={source:source,automatic:!!automatic,turn:copyTurn(turn,held),targetDistribution:targetDistribution};
+  UI.state.explanationPaused=false;
+  G.fortune=true;
+  UI.state.fortuneFx.seq++;
+}
+function closeFortune(clearContext){
+  G.fortune=false;
+  UI.state.explanationPaused=false;
+  if(clearContext)UI.state.fortuneContext=null;
+}
+
 /* ---------------- 利用者の操作 ---------------- */
 function toggleHeld(i){
   const t=G.turn;
   if(!t||G.active!=='user'||t.rollNumber===0||t.rollNumber>=3||G.busy||G.pending)return;
   t.held[i]=!t.held[i];
+  if(UI.state.fortuneContext&&UI.state.fortuneContext.source==='user')setFortuneContext('user',false,t,t.held,targetForHeld(t,t.held));
   UI.focusLater('#dice [data-i="'+i+'"]');
 }
 /* アリスのうらない（述語は store/game.js、表と光は views/Scorecard.js が持つ） */
 function toggleFortune(){
-  if(!G.fortune&&!canFortune())return;
-  G.fortune=!G.fortune;
-  UI.state.fortuneFx.seq++;
+  const context=UI.state.fortuneContext;
+  if(G.fortune){closeFortune(!context||context.source==='user');UI.state.fortuneFx.seq++;return;}
+  if(context&&context.source!=='user'&&GM.canExplanationFortune()){
+    context.automatic=false;UI.state.explanationPaused=true;G.fortune=true;UI.state.fortuneFx.seq++;return;
+  }
+  if(!GM.canUserFortune())return;
+  setFortuneContext('user',false,G.turn,G.turn.held,targetForHeld(G.turn,G.turn.held));
 }
 async function userRoll(){
   const t=G.turn;
@@ -2050,10 +2119,12 @@ function showAdvice(opt){
   const ph=opt.type==='keep'?keepActionPhrase(g.rec):catActionPhrase(g.rec.cat,g.rec.points);
   const rl=reasonLines(g.reasons,ph.stem,opt.type==='keep',g.facts);
   const l1=`こういうときは ${ph.full}にゃ`;
-  G.pending={type:opt.type,rec:g.rec,recHeld:g.recHeld,cat:opt.cat};
+  G.pending={type:opt.type,rec:g.rec,recHeld:g.recHeld,cat:opt.cat,facts:g.facts};
   say(l1,rl.reason,rl.chip,'warn','advice');
   /* 枠の中身と焦点は views/AdvicePanel.js が G.advice から決める。ここは何を出すかを置くだけである。 */
   G.advice={chip:rl.chip,l1:l1,reason:rl.reason,early:!!opt.early,onFix:opt.onFix,onKeep:opt.onKeep};
+  if(opt.type==='keep')setFortuneContext('advice',true,G.turn,g.recHeld,g.facts.targetDistribution);
+  else UI.state.scoreBreakdowns=g.facts.breakdowns;
 }
 /* 「おすすめに直す」。分割前の b1 のリスナと同じ順で、最後に受け取った手を実行する。 */
 async function adviceFix(){
@@ -2061,6 +2132,8 @@ async function adviceFix(){
   const a=G.advice;
   G.pending=null;
   G.advice=null;
+  closeFortune(true);
+  UI.state.scoreBreakdowns=null;
   say('それでいいにゃ。','','','ok','none');
   logAdvice('choice','→ おすすめに直した');
   if(a&&a.onFix)await a.onFix();
@@ -2071,6 +2144,8 @@ async function adviceKeep(){
   const a=G.advice;
   G.pending=null;
   G.advice=null;
+  closeFortune(true);
+  UI.state.scoreBreakdowns=null;
   say('わかったにゃ、教主の手で進めるにゃ。','','','','none');
   logAdvice('choice','→ このまま進んだ');
   if(a&&a.onKeep)await a.onKeep();
@@ -2081,7 +2156,9 @@ async function kommyTurn(){
   const gid=G.gameId;
   const p=ko();
   const o=me();
-  const quiet=G.mode==='serious';
+  const isQuiet=function(){
+    return G.mode==='serious'||G.kommyQuiet;
+  };
   say('コミーの番にゃ。','','','','turn');
   await wait(rint(G.rng.pres,500,900));
   if(gid!==G.gameId)return;
@@ -2097,7 +2174,7 @@ async function kommyTurn(){
       keepRec=ev.recommended;
       if(keepRec.nKept<5){
         /* ガチ対戦：原則も理由も言わず、手だけ指す */
-        if(quiet){
+        if(isQuiet()){
           t.held=heldFromAction(keepRec);
           await wait(rint(G.rng.pres,500,900));
           if(gid!==G.gameId)return;
@@ -2105,18 +2182,20 @@ async function kommyTurn(){
           continue;
         }
         const kctx={own:stateOf(p),opp:stateOf(o),green:t.green,rec:keepRec,scores:handScores(),
-          remaining:ev.remaining,rerollsLeft:rl,evalResult:ev,scoresCard:p.categoryScores};
-        const reasons=TD.keepReasons(kctx);
+          remaining:ev.remaining,rerollsLeft:rl,evalResult:ev,scoresCard:p.categoryScores,strategy:POLICY.strat};
         const facts=TD.keepFacts(kctx);
+        const reasons=TD.keepReasons(Object.assign({facts:facts},kctx));
         const ph=keepActionPhrase(keepRec);
         const rlns=reasonLines(reasons,ph.stem,true,facts);
         say(`こういうときは ${ph.full}にゃ`,'',rlns.chip,'','principle');
         await wait(rint(G.rng.pres,700,1200));
         if(gid!==G.gameId)return;
         t.held=heldFromAction(keepRec);
+        if(!G.fast)setFortuneContext('kommy',true,t,t.held,facts.targetDistribution);
         say(`こういうときは ${ph.full}にゃ`,rlns.reason,rlns.chip,'','reason');
-        await wait(holdTime(rlns.reason));
+        await wait(holdTime(rlns.reason)+(G.fast?0:1500));
         if(gid!==G.gameId)return;
+        closeFortune(true);
         if(!await doRoll())return;
         continue;
       }
@@ -2125,7 +2204,7 @@ async function kommyTurn(){
     const ev=POLICY.strat.evaluateCategory(stateOf(p),stateOf(o),redCounts(),t.green);
     const rec=ev.recommended;
     /* ガチ対戦：結果だけを言う */
-    if(quiet){
+    if(isQuiet()){
       G.koSel=rec.cat;
       await wait(rint(G.rng.pres,500,900));
       if(gid!==G.gameId)return;
@@ -2135,9 +2214,9 @@ async function kommyTurn(){
       return;
     }
     const cctx={own:stateOf(p),opp:stateOf(o),evalResult:ev,rec,scores:handScores(),remaining:ev.remaining,
-      scoresCard:p.categoryScores};
-    const reasons=TD.categoryReasons(cctx);
+      scoresCard:p.categoryScores,strategy:POLICY.strat};
     const facts=TD.catFacts(cctx);
+    const reasons=TD.categoryReasons(Object.assign({facts:facts},cctx));
     const ph=catActionPhrase(rec.cat,rec.points);
     const rlns=reasonLines(reasons,ph.stem,false,facts);
     const pre=(keepRec&&keepRec.nKept===5&&rl>0)?'この形はもう振らないにゃ。':'';
@@ -2145,9 +2224,11 @@ async function kommyTurn(){
     await wait(rint(G.rng.pres,700,1200));
     if(gid!==G.gameId)return;
     G.koSel=rec.cat;
+    UI.state.scoreBreakdowns=facts.breakdowns;
     say(`${pre}こういうときは ${ph.full}にゃ`,rlns.reason,rlns.chip,'','reason');
     await wait(holdTime(rlns.reason));
     if(gid!==G.gameId)return;
+    UI.state.scoreBreakdowns=null;
     await registerAndAdvance(rec.cat);
     return;
   }
@@ -2184,8 +2265,13 @@ TV.defineStore('director',function(){
     adviceKeep:adviceKeep,
     kommyTurn:kommyTurn,
     userSelectCat:function(c){G.selCat=c;},
-    setFast:function(){G.fast=!G.fast;skipFlag=true;},
-    skip:function(){skipFlag=true;},
+    setFast:function(){G.fast=!G.fast;if(G.fast)closeFortune(true);skipFlag=true;},
+    setKommyQuiet:function(checked){
+      G.kommyQuiet=!!checked;
+      if(G.kommyQuiet)closeFortune(true);
+      skipFlag=true;
+    },
+    skip:function(){if(UI.state.explanationPaused)closeFortune(true);skipFlag=true;},
     openHowto:function(){UI.openModal('ovHowto');},
     openConfirm:function(){UI.openModal('ovConfirm');},
     reopenResult:function(){if(G.phase==='result')UI.openModal('ovResult');},
@@ -2564,7 +2650,67 @@ function buildDice(game) {
   return dice;
 }
 
-const api={pipRow,dieView,buildDice};
+function validHistoryContext(context) {
+  return !!(
+    context
+    &&Number.isInteger(context.rollNumber)
+    &&context.rollNumber>=1
+    &&context.rollNumber<=3
+    &&Array.isArray(context.redFaces)
+    &&context.redFaces.length===4
+    &&context.redFaces.every(face => Number.isInteger(face)&&face>=1&&face<=6)
+    &&Number.isInteger(context.green)
+    &&context.green>=1
+    &&context.green<=6
+    &&Array.isArray(context.held)
+    &&context.held.length===5
+    &&context.held.every(held => typeof held==='boolean')
+  );
+}
+
+function historyFaceLabel(context,index) {
+  if(index===4){
+    return `緑${context.green===1?'W':context.green}`;
+  }
+  return `赤${context.redFaces[index]}`;
+}
+
+function buildHistoryDice(context) {
+  if(!validHistoryContext(context)){
+    return null;
+  }
+  const turn={
+    rollNumber:context.rollNumber,
+    redFaces:context.redFaces.slice(),
+    green:context.green,
+    held:context.held.slice(),
+  };
+  const dice=[];
+  const faceLabels=[];
+  const heldLabels=[];
+  for(let index=0;index<5;index++){
+    dice.push(dieView({
+      turn:turn,
+      index:index,
+      userCanDecide:false,
+      recommendedHeld:null,
+      animationFaces:null,
+    }));
+    const label=historyFaceLabel(context,index);
+    faceLabels.push(label);
+    if(context.held[index]){
+      heldLabels.push(label);
+    }
+  }
+  const keepText=heldLabels.length?`KEEPは${heldLabels.join('、')}`:'KEEPなし';
+  return {
+    rollText:`${context.rollNumber}投目`,
+    ariaLabel:`${context.rollNumber}投目。出目は${faceLabels.join('、')}。${keepText}。`,
+    dice:dice,
+  };
+}
+
+const api={pipRow,dieView,buildDice,buildHistoryDice};
 viewmodel.dice=api;
 
 if(typeof module!=='undefined'&&module.exports){
@@ -2838,14 +2984,18 @@ function scoreCell(game,player,who,category,scores,options,recommendedCategory) 
     classes.push('rec');
   }
   const selectedCategory=isUser?game.selCat:game.koSel;
+  const breakdown=options.breakdowns&&options.breakdowns[category];
+  const breakdownText=breakdown?`${TDX.text.fmt1(breakdown.current)}＋${TDX.text.fmt1(breakdown.future)}`:null;
+  const breakdownAria=breakdown?`、いま ${TDX.text.fmt1(breakdown.current)} 点、この先 ${TDX.text.fmt1(breakdown.future)} 点`:'';
   return {
     kind:'candidate',
     classes:classes,
     category:category,
     pressed:String(selectedCategory===category),
     disabled:!(isUser&&options.canSelect),
-    ariaLabel:`${TDX.text.CAT_SPEECH[category]} に ${scores[category]} 点`,
+    ariaLabel:`${TDX.text.CAT_SPEECH[category]} に ${scores[category]} 点${breakdownAria}`,
     points:scores[category],
+    breakdown:breakdownText,
   };
 }
 
@@ -2995,7 +3145,25 @@ function roleRows(turn) {
   });
 }
 
-function buildFortuneTable(turn) {
+function targetRows(distribution) {
+  if(!distribution){
+    return [];
+  }
+  return Array.from(distribution,function(probability,category){
+    return {
+      category:category,
+      label:TDX.text.CAT_LABEL[category],
+      probability:probability,
+      text:formatProbability(probability),
+    };
+  }).filter(function(row){return row.probability>0;})
+    .sort(function(left,right){
+      return right.probability-left.probability||left.category-right.category;
+    })
+    .slice(0,3);
+}
+
+function buildFortuneTable(turn,targetDistribution) {
   if(!turn){
     return null;
   }
@@ -3003,10 +3171,10 @@ function buildFortuneTable(turn) {
   for(let face=1;face<=6;face++){
     faces.push(faceRow(turn,face));
   }
-  return {faces:faces,roles:roleRows(turn)};
+  return {faces:faces,roles:roleRows(turn),targets:targetRows(targetDistribution)};
 }
 
-const api={formatProbability,faceRow,roleRows,buildFortuneTable};
+const api={formatProbability,faceRow,roleRows,targetRows,buildFortuneTable};
 viewmodel.fortuneTable=api;
 
 if(typeof module!=='undefined'&&module.exports){
@@ -3304,6 +3472,23 @@ TV.defineView('RoundLine',{
     id="rollLbl"
   >{{ rollText }}</span>
   <span class="menu">
+    <label
+      class="kommy-quiet"
+      :hidden="quietOff"
+      title="コミーのターンは早送り"
+    ><input
+      id="chkKommyQuiet"
+      type="checkbox"
+      aria-label="コミーのターンは早送り"
+      :checked="kommyQuiet"
+      @change="onQuietChange"
+    ><span
+      class="kommy-quiet-full"
+      aria-hidden="true"
+    >コミーのターンは早送り</span><span
+      class="kommy-quiet-short"
+      aria-hidden="true"
+    >早</span></label>
     <button
       class="btn-small"
       id="btnResultAgain"
@@ -3346,6 +3531,12 @@ TV.defineView('RoundLine',{
     return {
       roundText:roundText,
       rollText:rollText,
+      kommyQuiet:TV.computed(function(){
+        return game.kommyQuiet;
+      }),
+      quietOff:TV.computed(function(){
+        return game.mode==='serious';
+      }),
       resultOff:TV.computed(function(){
         return game.phase!=='result';
       }),
@@ -3354,6 +3545,9 @@ TV.defineView('RoundLine',{
       }),
       onResult:function(){
         director.reopenResult();
+      },
+      onQuietChange:function(event){
+        director.setKommyQuiet(event.target.checked);
       },
       onHowto:function(){
         director.openHowto();
@@ -3754,7 +3948,10 @@ TV.defineView('ScoreTable',{
           :aria-pressed="cell.pressed"
           :disabled="cell.disabled"
           :aria-label="cell.ariaLabel"
-        >{{ cell.points }}</button></td>
+        ><span>{{ cell.points }}</span><small
+          v-if="cell.breakdown"
+          class="breakdown"
+        >{{ cell.breakdown }}</small></button></td>
         <td
           v-else
           class="v empty"
@@ -3809,7 +4006,10 @@ TV.defineView('ScoreTable',{
           :aria-pressed="cell.pressed"
           :disabled="cell.disabled"
           :aria-label="cell.ariaLabel"
-        >{{ cell.points }}</button></td>
+        ><span>{{ cell.points }}</span><small
+          v-if="cell.breakdown"
+          class="breakdown"
+        >{{ cell.breakdown }}</small></button></td>
         <td
           v-else
           class="v empty"
@@ -3903,6 +4103,24 @@ TV.defineView('FortuneTable',{
         :aria-label="row.ariaLabel"
       >{{ row.text }}</td>
     </tr>
+    <template v-if="model.targets.length">
+      <tr class="sec"><td colspan="6">この残し方で最後に書く役（上位 3 役）</td></tr>
+      <tr
+        v-for="row in model.targets"
+        :key="row.category"
+        :data-target-category="row.category"
+      >
+        <td
+          class="n"
+          colspan="2"
+        ><span class="nwrap"><span class="ico l">{{ row.label }}</span></span></td>
+        <td
+          class="v p role"
+          colspan="4"
+          :aria-label="row.label+'へ書く見込み '+row.text"
+        >{{ row.text }}</td>
+      </tr>
+    </template>
   </tbody>
 </table>`,
 });
@@ -3986,6 +4204,9 @@ TV.defineView('Scorecard',{
         flash:userInterface.state.flash,
         canSelect:TDX.game.canSelect(),
         canFortune:canFortune(),
+        breakdowns:userInterface.state.scoreBreakdowns||(
+          game.pending&&game.pending.facts&&game.pending.facts.breakdowns
+        )||null,
       });
     });
 
@@ -3993,7 +4214,11 @@ TV.defineView('Scorecard',{
       if(!game.players||!game.fortune||!game.turn){
         return null;
       }
-      return fortuneTable.buildFortuneTable(game.turn);
+      const context=userInterface.state.fortuneContext;
+      return fortuneTable.buildFortuneTable(
+        context&&context.turn?context.turn:game.turn,
+        context&&context.targetDistribution,
+      );
     });
 
     function focusCategory(category) {
@@ -4633,6 +4858,96 @@ function spanElement(classes,text) {
   return span;
 }
 
+const SVG_NAMESPACE='http://www.w3.org/2000/svg';
+
+function svgElement(name,attributes,text) {
+  const element=document.createElementNS(SVG_NAMESPACE,name);
+  Object.keys(attributes).forEach(function(attributeName) {
+    element.setAttribute(attributeName,attributes[attributeName]);
+  });
+  if(text){
+    element.textContent=text;
+  }
+  return element;
+}
+
+function elfElement() {
+  const svg=svgElement('svg',{class:'elf',viewBox:'0 0 40 40','aria-hidden':'true'});
+  svg.appendChild(svgElement('path',{
+    d:'M20 4 C 26 4 30 10 30 10 C 27 8 24 8 22 9',
+    fill:'none',
+    stroke:'#fff',
+    'stroke-width':'2.4',
+    'stroke-linecap':'round',
+  }));
+  svg.appendChild(svgElement('ellipse',{cx:'20',cy:'24',rx:'13',ry:'11.5',fill:'#fff'}));
+  svg.appendChild(svgElement('ellipse',{cx:'20',cy:'24',rx:'11.5',ry:'10',fill:'#dff5d8'}));
+  svg.appendChild(svgElement('circle',{cx:'15.5',cy:'23',r:'2.2',fill:'#2b5a33'}));
+  svg.appendChild(svgElement('circle',{cx:'24.5',cy:'23',r:'2.2',fill:'#2b5a33'}));
+  svg.appendChild(svgElement('path',{
+    d:'M16.5 28 q3.5 3 7 0',
+    fill:'none',
+    stroke:'#2b5a33',
+    'stroke-width':'1.6',
+    'stroke-linecap':'round',
+  }));
+  svg.appendChild(svgElement('text',{
+    x:'20',
+    y:'38',
+    'text-anchor':'middle',
+    'font-size':'9',
+    'font-weight':'900',
+    fill:'#fff',
+  },'W'));
+  return svg;
+}
+
+function historyDieElement(dieModel) {
+  const slot=document.createElement('div');
+  slot.className='dslot';
+  slot.setAttribute('aria-hidden','true');
+  const die=document.createElement('div');
+  die.className='die '+dieModel.classes.join(' ');
+  if(dieModel.pressed==='true'){
+    die.classList.add('history-held');
+  }
+  if(dieModel.showsElf){
+    die.appendChild(elfElement());
+  }else{
+    dieModel.pips.forEach(function(active) {
+      const pip=document.createElement('div');
+      pip.className='pip'+(active?' on':'');
+      die.appendChild(pip);
+    });
+  }
+  const label=lineElement('dlabel'+(dieModel.pressed==='true'?' keep':''),dieModel.text);
+  slot.appendChild(die);
+  slot.appendChild(label);
+  return slot;
+}
+
+function turnContextElement(entry) {
+  const model=TDX.viewmodel.dice.buildHistoryDice(entry.turnContext);
+  if(!model){
+    return null;
+  }
+  const context=document.createElement('div');
+  context.className='turn-context';
+  context.setAttribute('role','img');
+  context.setAttribute('aria-label',model.ariaLabel);
+  const label=lineElement('turn-label',model.rollText);
+  label.setAttribute('aria-hidden','true');
+  context.appendChild(label);
+  const dice=document.createElement('div');
+  dice.className='dice history-dice';
+  dice.setAttribute('aria-hidden','true');
+  model.dice.forEach(function(dieModel) {
+    dice.appendChild(historyDieElement(dieModel));
+  });
+  context.appendChild(dice);
+  return context;
+}
+
 function create(options) {
   function logElement() {
     return options.getLogElement();
@@ -4756,6 +5071,10 @@ function create(options) {
       const toneClass=entry.tone==='warn'?' warn':entry.tone==='ok'?' ok':'';
       const message=document.createElement('div');
       message.className='msg kommy advice'+toneClass;
+      const context=turnContextElement(entry);
+      if(context){
+        message.appendChild(context);
+      }
       if(entry.chip){
         message.appendChild(spanElement('chip',entry.chip));
       }
